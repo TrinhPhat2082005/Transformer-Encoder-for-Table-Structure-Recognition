@@ -265,7 +265,7 @@ Ma trận kề `N × N` với giá trị 0-1, trong đó:
 
 ## 👤 Tác Giả
 
-- **Họ tên**: Trịnh Nhật Phát
+- **Họ tên**: Trịnh Nguyên Phát
 - **GitHub**: [@TrinhPhat2082005](https://github.com/TrinhPhat2082005)
 
 ---
