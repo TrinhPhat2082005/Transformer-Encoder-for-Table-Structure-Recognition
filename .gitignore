@@ -71,16 +71,6 @@ venv.bak/
 *.swp
 *.swo
 
-# Model weights (quá lớn để push lên GitHub)
-model/*.pth
-*.pth
-
-# Dataset (quá lớn để push lên GitHub)
-dataset/
-
 # OS
 .DS_Store
 Thumbs.db
-
-# Report folder (LaTeX documents)
-report/
