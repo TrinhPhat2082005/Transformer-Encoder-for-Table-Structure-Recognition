@@ -5,9 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-# Import model classes
+# Import các lớp model
 from model import ClusTabNetPipeline, ClusTabEmbedding
-# Import build_global_vocab from dataset
+# Import build_global_vocab từ dataset
 from dataset import build_global_vocab
 
 

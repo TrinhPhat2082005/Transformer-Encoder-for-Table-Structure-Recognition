@@ -1,0 +1,620 @@
+% ============================================================================
+% CHAPTER 2: BACKGROUND KNOWLEDGE - KIẾN THỨC NỀN TẢNG
+% ============================================================================
+\chapter{Kiến Thức Nền Tảng}
+\label{chap:background}
+
+Chương này trình bày các kiến thức lý thuyết nền tảng cần thiết để hiểu và triển khai mô hình ClusTabNet, bao gồm cơ chế Self-Attention, kiến trúc Transformer Encoder, phương pháp phân cụm (Clustering), và các khái niệm liên quan. Việc nắm vững các kiến thức này là tiền đề quan trọng để có thể triển khai, debug, và cải tiến mô hình một cách hiệu quả.
+
+% ============================================================================
+% 2.1 Cơ chế Attention
+% ============================================================================
+\section{Cơ Chế Attention}
+\label{sec:attention}
+
+\subsection{Bối cảnh và động lực}
+
+Trước khi cơ chế Attention ra đời, các mô hình xử lý chuỗi (sequence modeling) chủ yếu dựa trên kiến trúc Recurrent Neural Networks (RNN) và các biến thể như Long Short-Term Memory (LSTM) và Gated Recurrent Units (GRU). Tuy những kiến trúc này đã đạt được nhiều thành công trong các tác vụ như dịch máy (machine translation), tóm tắt văn bản (text summarization), và nhận dạng giọng nói (speech recognition), chúng vẫn tồn tại những hạn chế cơ bản:
+
+\begin{itemize}
+    \item \textbf{Xử lý tuần tự (Sequential processing):} RNN xử lý từng phần tử trong chuỗi một cách tuần tự từ trái sang phải (hoặc ngược lại). Điều này khiến chúng không thể song song hóa trong quá trình huấn luyện, dẫn đến thời gian huấn luyện rất dài với các chuỗi dài.
+    
+    \item \textbf{Vấn đề triệt tiêu/bùng nổ gradient (vanishing/exploding gradient):} Khi chuỗi đầu vào dài, gradient truyền ngược qua nhiều bước thời gian có xu hướng bị suy giảm (vanishing) hoặc phình to (exploding), khiến mô hình khó học được các phụ thuộc dài hạn (long-range dependencies).
+    
+    \item \textbf{Bottleneck trong encoder-decoder:} Trong kiến trúc encoder-decoder truyền thống, toàn bộ thông tin của chuỗi nguồn được nén vào một vector context duy nhất. Đây là một "nút thắt cổ chai" (bottleneck) nghiêm trọng khi chuỗi nguồn dài.
+\end{itemize}
+
+Cơ chế Attention được giới thiệu ban đầu bởi Bahdanau et al. (2014) như một giải pháp cho vấn đề bottleneck trong dịch máy neural. Ý tưởng cốt lõi là: thay vì nén toàn bộ câu nguồn vào một vector duy nhất, ta cho phép decoder "nhìn trực tiếp" vào tất cả các vị trí của encoder và "chú ý" (attend) đến những vị trí liên quan nhất khi sinh ra mỗi từ đích.
+
+\subsection{Giới thiệu về Attention}
+
+Cơ chế Attention (Chú ý) là một kỹ thuật quan trọng trong Deep Learning, cho phép mô hình tập trung vào các phần quan trọng của đầu vào khi đưa ra dự đoán. Thay vì xử lý toàn bộ chuỗi đầu vào một cách đồng đều, Attention cho phép mô hình "chú ý" đến các vị trí có liên quan nhất dựa trên ngữ cảnh hiện tại.
+
+Về mặt trực quan, có thể hình dung cơ chế Attention giống như cách con người đọc một đoạn văn để trả lời câu hỏi: ta không đọc toàn bộ đoạn văn với mức độ tập trung đều nhau, mà sẽ "lướt qua" những phần không liên quan và "tập trung" vào những phần chứa thông tin cần thiết để trả lời.
+
+Trong ngữ cảnh của neural networks, Attention được định nghĩa như một cơ chế tính toán:
+\begin{enumerate}
+    \item Đánh giá mức độ "liên quan" (relevance) giữa một truy vấn (query) và một tập các khóa (keys).
+    \item Sử dụng điểm số liên quan này để tính trọng số (weights) cho các giá trị (values) tương ứng.
+    \item Tổng hợp các values theo trọng số để tạo ra đầu ra.
+\end{enumerate}
+
+\subsection{Scaled Dot-Product Attention}
+
+Scaled Dot-Product Attention là phiên bản hiệu quả và được sử dụng rộng rãi nhất của cơ chế Attention, được giới thiệu trong paper ``Attention Is All You Need'' \cite{vaswani2017attention}. Đây là thành phần cơ bản của kiến trúc Transformer.
+
+Cho ba ma trận đầu vào:
+\begin{itemize}
+    \item \textbf{Query (Q)}: Ma trận truy vấn, kích thước $(n, d_k)$, trong đó $n$ là số lượng queries và $d_k$ là chiều của mỗi query vector.
+    \item \textbf{Key (K)}: Ma trận khóa, kích thước $(m, d_k)$, trong đó $m$ là số lượng keys (thường bằng số values).
+    \item \textbf{Value (V)}: Ma trận giá trị, kích thước $(m, d_v)$, chứa thông tin cần truy xuất.
+\end{itemize}
+
+Công thức tính Scaled Dot-Product Attention:
+
+\begin{equation}
+\label{eq:attention}
+\text{Attention}(Q, K, V) = \softmax\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation}
+
+Giải thích chi tiết từng bước:
+
+\textbf{Bước 1 - Tính điểm tương đồng:} $QK^T$ là phép nhân ma trận giữa Query và Key chuyển vị. Kết quả là ma trận điểm số (scores) kích thước $(n, m)$, trong đó phần tử $(i, j)$ thể hiện mức độ "tương đồng" hoặc "liên quan" giữa query thứ $i$ và key thứ $j$. Về bản chất, đây là phép tính dot product giữa các vectors, đo lường độ tương tự theo hướng trong không gian vector.
+
+\textbf{Bước 2 - Scaling:} Chia cho $\sqrt{d_k}$ là bước scaling quan trọng. Khi $d_k$ lớn, độ lớn của dot products có xu hướng tăng theo, dẫn đến các giá trị rất lớn trước khi đi qua softmax. Với các giá trị quá lớn, softmax sẽ trả về phân phối gần như one-hot (một giá trị gần 1, còn lại gần 0), khiến gradient trở nên rất nhỏ và mô hình khó học. Scaling giúp giữ các giá trị trong khoảng hợp lý.
+
+\textbf{Bước 3 - Softmax:} Áp dụng hàm softmax theo chiều cuối cùng (theo các keys) để chuẩn hóa điểm số thành phân phối xác suất. Mỗi hàng của kết quả là một phân phối xác suất trên $m$ keys, với tổng bằng 1. Đây chính là "attention weights" - trọng số attention.
+
+\textbf{Bước 4 - Weighted sum:} Nhân attention weights với Value matrix để tính tổng có trọng số của các values. Query thứ $i$ sẽ "tập trung" nhiều hơn vào những values có attention weight cao.
+
+\subsection{Ví dụ minh họa}
+
+Xét ví dụ đơn giản với 3 tokens và $d_k = 2$:
+
+Giả sử sau projection, ta có:
+\begin{align*}
+Q &= \begin{bmatrix} 1 & 0 \\ 0 & 1 \\ 1 & 1 \end{bmatrix}, \quad
+K = \begin{bmatrix} 1 & 0 \\ 0 & 1 \\ 1 & 1 \end{bmatrix}, \quad
+V = \begin{bmatrix} 1 & 2 \\ 3 & 4 \\ 5 & 6 \end{bmatrix}
+\end{align*}
+
+Bước 1: $QK^T = \begin{bmatrix} 1 & 0 & 1 \\ 0 & 1 & 1 \\ 1 & 1 & 2 \end{bmatrix}$
+
+Bước 2: Scaling với $\sqrt{d_k} = \sqrt{2} \approx 1.414$:
+$\frac{QK^T}{\sqrt{2}} = \begin{bmatrix} 0.71 & 0 & 0.71 \\ 0 & 0.71 & 0.71 \\ 0.71 & 0.71 & 1.41 \end{bmatrix}$
+
+Bước 3: Softmax theo hàng sẽ cho attention weights
+
+Bước 4: Nhân với V để có kết quả cuối cùng.
+
+Token thứ 3 (row cuối) có attention score cao nhất với chính nó (1.41), cho thấy nó "tự chú ý" nhiều nhất vào bản thân, đây là đặc điểm quan trọng của Self-Attention.
+
+% ============================================================================
+% 2.2 Self-Attention
+% ============================================================================
+\section{Self-Attention}
+\label{sec:self_attention}
+
+\subsection{Định nghĩa và đặc điểm}
+
+Self-Attention (hay còn gọi là Intra-Attention) là trường hợp đặc biệt của cơ chế Attention khi Query, Key và Value đều được tính từ cùng một chuỗi đầu vào. Điều này cho phép mỗi phần tử trong chuỗi "chú ý" đến tất cả các phần tử khác trong cùng chuỗi, bao gồm cả chính nó.
+
+Cho chuỗi đầu vào $X \in \mathbb{R}^{n \times d_{model}}$ gồm $n$ vectors, mỗi vector có chiều $d_{model}$, Self-Attention được tính như sau:
+
+\begin{align}
+Q &= XW^Q \label{eq:query}\\
+K &= XW^K \label{eq:key}\\
+V &= XW^V \label{eq:value}
+\end{align}
+
+Trong đó $W^Q, W^K \in \mathbb{R}^{d_{model} \times d_k}$ và $W^V \in \mathbb{R}^{d_{model} \times d_v}$ là các ma trận trọng số có thể học được (learnable parameters). Các ma trận này đóng vai trò "chiếu" (project) đầu vào vào các không gian biểu diễn khác nhau cho query, key, và value.
+
+\subsection{Ý nghĩa của việc tách riêng Q, K, V}
+
+Việc không dùng trực tiếp $X$ mà cần chiếu qua $W^Q$, $W^K$, $W^V$ riêng biệt có ba lý do chính:
+
+\begin{enumerate}
+    \item \textbf{Tính linh hoạt:} Cho phép mô hình học các "vai trò" khác nhau cho cùng một token. Khi đóng vai trò query (đi tìm thông tin), một token có thể cần biểu diễn khác với khi đóng vai trò key (được tìm kiếm) hoặc value (cung cấp thông tin).
+    
+    \item \textbf{Asymmetry:} Trong nhiều trường hợp, mối quan hệ không đối xứng. Ví dụ: "cat" cần attention đến "sat" (động từ của nó), nhưng "sat" có thể không cần attention ngược lại với cùng mức độ.
+    
+    \item \textbf{Khả năng biểu diễn:} Các projection matrices bổ sung thêm tham số, tăng khả năng biểu diễn (expressiveness) của mô hình.
+\end{enumerate}
+
+\subsection{Ý nghĩa trong nhận dạng cấu trúc bảng}
+
+Trong bài toán Table Structure Recognition (TSR), Self-Attention đóng vai trò then chốt vì nó cho phép mô hình học các mối quan hệ phức tạp giữa các tokens (từ) trong bảng:
+
+\begin{itemize}
+    \item \textbf{Học mối quan hệ vị trí:} Self-Attention có thể học rằng các tokens có tọa độ y tương tự (cùng độ cao) có khả năng thuộc cùng một hàng. Tương tự, các tokens có tọa độ x tương tự có khả năng thuộc cùng một cột. Điều quan trọng là mô hình không cần được lập trình luật này một cách tường minh - nó tự học từ dữ liệu.
+    
+    \item \textbf{Nhận diện ngữ cảnh:} Một từ như "Total" khi xuất hiện trong bảng thường chỉ ra một hàng tổng hợp. Self-Attention giúp các tokens xung quanh "biết" rằng chúng đang ở trong ngữ cảnh của hàng tổng, từ đó có thể phân loại chính xác hơn.
+    
+    \item \textbf{Xử lý spanning cells:} Với ô gộp trải dài nhiều cột, các tokens trong ô gộp cần "attention" đến cả các tokens ở các cột khác nhau. Self-Attention cho phép điều này một cách tự nhiên mà không cần hardcode logic.
+    
+    \item \textbf{Nắm bắt ngữ cảnh toàn cục:} Mỗi token có thể "nhìn thấy" tất cả các tokens khác trong bảng, giúp đưa ra quyết định dựa trên toàn bộ ngữ cảnh thay vì chỉ các tokens lân cận.
+\end{itemize}
+
+\subsection{Độ phức tạp tính toán}
+
+Self-Attention có độ phức tạp thời gian $O(n^2 \cdot d_k)$ và độ phức tạp không gian $O(n^2)$ cho attention matrix. Với $n$ là độ dài chuỗi, điều này có nghĩa:
+
+\begin{itemize}
+    \item Chi phí tính toán tăng theo bình phương độ dài chuỗi.
+    \item Với bảng có 100 tokens, cần lưu trữ ma trận $100 \times 100 = 10,000$ phần tử.
+    \item Với bảng có 500 tokens, cần $500 \times 500 = 250,000$ phần tử.
+\end{itemize}
+
+Đây là một hạn chế quan trọng của Transformer, và là lý do cần giới hạn max sequence length trong các mô hình thực tế.
+
+% ============================================================================
+% 2.3 Multi-Head Attention
+% ============================================================================
+\section{Multi-Head Attention}
+\label{sec:multihead_attention}
+
+\subsection{Động lực và ý tưởng}
+
+Đây là cơ chế để mô hình học nhiều loại mối quan hệ khác nhau giữa các tokens.
+
+Một cặp tokens có thể có nhiều loại mối quan hệ khác nhau cần học. Ví dụ trong câu "The cat sat on the mat":
+\begin{itemize}
+    \item "cat" và "sat" có mối quan hệ \textit{chủ ngữ - động từ}.
+    \item "sat" và "mat" có mối quan hệ \textit{động từ - bổ ngữ địa điểm}.
+    \item "cat" và "mat" có mối quan hệ \textit{vần} (đều kết thúc bằng "at").
+\end{itemize}
+
+Một single-head attention có thể khó nắm bắt đồng thời tất cả các mối quan hệ này trong cùng một không gian biểu diễn. Multi-Head Attention giải quyết vấn đề này bằng cách sử dụng nhiều "heads" song song, mỗi head có thể chuyên biệt hóa để học một loại pattern khác nhau.
+
+\subsection{Công thức Multi-Head Attention}
+
+Multi-Head Attention mở rộng Self-Attention bằng cách thực hiện nhiều phép attention song song với các không gian biểu diễn (subspaces) khác nhau:
+
+\begin{equation}
+\label{eq:multihead}
+\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O
+\end{equation}
+
+Trong đó mỗi head được tính độc lập:
+
+\begin{equation}
+\label{eq:head}
+\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
+\end{equation}
+
+Chi tiết các kích thước:
+\begin{itemize}
+    \item Số lượng heads: $h$ (thường là 4, 8, hoặc 16)
+    \item Kích thước mỗi head: $d_k = d_v = d_{model}/h$
+    \item Ma trận projection cho mỗi head: $W_i^Q, W_i^K \in \mathbb{R}^{d_{model} \times d_k}$, $W_i^V \in \mathbb{R}^{d_{model} \times d_v}$
+    \item Ma trận output projection: $W^O \in \mathbb{R}^{hd_v \times d_{model}}$
+\end{itemize}
+
+\subsection{Giải thích trực quan}
+
+Có thể hình dung Multi-Head Attention như việc có $h$ "chuyên gia" độc lập, mỗi chuyên gia nhìn dữ liệu từ một góc nhìn khác:
+
+\begin{itemize}
+    \item \textbf{Head 1} có thể học tập trung vào mối quan hệ vị trí (tokens gần nhau).
+    \item \textbf{Head 2} có thể học mối quan hệ ngữ pháp (chủ ngữ - động từ).
+    \item \textbf{Head 3} có thể học mối quan hệ ngữ nghĩa (từ đồng nghĩa, liên quan).
+    \item ...
+\end{itemize}
+
+Sau đó, ý kiến của tất cả "chuyên gia" được tổng hợp (concatenate) và đi qua một projection cuối để tạo ra output.
+
+\subsection{Ưu điểm của Multi-Head Attention}
+
+\begin{enumerate}
+    \item \textbf{Đa dạng patterns:} Như đã phân tích, nhiều heads cho phép học nhiều loại mối quan hệ khác nhau.
+    
+    \item \textbf{Ensemble effect:} Tương tự như ensemble learning, việc kết hợp nhiều "mô hình con" (heads) thường cho kết quả ổn định và robust hơn một mô hình đơn lẻ.
+    
+    \item \textbf{Hiệu quả tính toán:} Mặc dù có nhiều heads, tổng số parameters và computation không đổi so với single-head attention có cùng $d_{model}$. Đây là nhờ việc chia nhỏ $d_{model}$ thành $h$ phần, mỗi phần có kích thước $d_k = d_{model}/h$.
+    
+    \item \textbf{Song song hóa:} Các heads có thể tính toán song song, tận dụng tối đa khả năng parallel processing của GPU.
+\end{enumerate}
+
+\subsection{Trong ClusTabNet}
+
+Trong triển khai ClusTabNet của đồ án, bài làm sử dụng $h = 4$ attention heads với $d_{model} = 640$, dẫn đến $d_k = 160$ cho mỗi head. Cấu hình này được chọn dựa trên cân bằng giữa khả năng biểu diễn và chi phí tính toán, phù hợp với quy mô bài toán TSR.
+
+% ============================================================================
+% 2.4 Transformer Encoder
+% ============================================================================
+\section{Kiến Trúc Transformer Encoder}
+\label{sec:transformer_encoder}
+
+\subsection{Tổng quan và lịch sử}
+
+Transformer là kiến trúc mang tính cách mạng được giới thiệu trong paper ``Attention Is All You Need'' \cite{vaswani2017attention}. Điểm đột phá của Transformer là loại bỏ hoàn toàn cơ chế recurrence (như trong RNN/LSTM) và convolution (như trong CNN), thay thế bằng cơ chế Self-Attention thuần túy.
+
+Kiến trúc Transformer gốc bao gồm hai phần: Encoder và Decoder. Trong đồ án này, bài làm tập trung vào Transformer Encoder vì ClusTabNet sử dụng Encoder để mã hóa chuỗi các tokens thành biểu diễn phong phú, sau đó sử dụng các Clustering Heads để dự đoán mối quan hệ.
+
+\subsection{Cấu trúc một Encoder Layer}
+
+Mỗi lớp Encoder (Encoder Layer) bao gồm hai sub-layers chính, mỗi sub-layer được bao bọc bởi Residual Connection và Layer Normalization:
+
+\begin{enumerate}
+    \item \textbf{Multi-Head Self-Attention:} Cho phép mỗi vị trí trong chuỗi attention đến tất cả các vị trí khác.
+    \item \textbf{Position-wise Feed-Forward Network (FFN):} Một mạng fully-connected được áp dụng độc lập cho từng vị trí.
+\end{enumerate}
+
+Công thức chi tiết:
+
+\begin{align}
+\text{SubLayer}_1(x) &= \text{LayerNorm}(x + \text{MultiHead}(x, x, x)) \label{eq:sublayer1}\\
+\text{SubLayer}_2(x) &= \text{LayerNorm}(x + \text{FFN}(x)) \label{eq:sublayer2}
+\end{align}
+
+Lưu ý: Trong công thức trên, cả Q, K, V đều bằng $x$ vì đây là Self-Attention.
+
+\subsection{Residual Connections}
+
+Residual Connections (hay Skip Connections) cho phép gradient truyền "tắt" qua các layers mà không bị suy giảm. Công thức:
+
+\begin{equation}
+\text{output} = x + \text{SubLayer}(x)
+\end{equation}
+
+Ý nghĩa:
+\begin{itemize}
+    \item Giúp gradient flow ổn định, giảm vấn đề vanishing gradient trong các mạng sâu.
+    \item Cho phép mô hình học "sự khác biệt" (residual) thay vì học toàn bộ mapping, thường dễ hơn.
+    \item Là yếu tố quan trọng cho phép xây dựng các mạng rất sâu (deep networks).
+\end{itemize}
+
+\subsection{Layer Normalization}
+
+Layer Normalization chuẩn hóa các activations theo chiều features (thay vì theo chiều batch như Batch Normalization):
+
+\begin{equation}
+\text{LayerNorm}(x) = \gamma \cdot \frac{x - \mu}{\sigma + \epsilon} + \beta
+\end{equation}
+
+Trong đó $\mu$ và $\sigma$ là mean và standard deviation tính theo chiều features, $\gamma$ và $\beta$ là parameters có thể học được.
+
+Lý do sử dụng Layer Normalization thay vì Batch Normalization:
+\begin{itemize}
+    \item Không phụ thuộc vào batch size, phù hợp với các chuỗi có độ dài khác nhau.
+    \item Hoạt động nhất quán trong cả training và inference.
+    \item Hiệu quả hơn với các mô hình sequence-to-sequence.
+\end{itemize}
+
+\subsection{Feed-Forward Network}
+
+Position-wise Feed-Forward Network (FFN) được định nghĩa là hai phép biến đổi tuyến tính với một hàm activation phi tuyến ở giữa:
+
+\begin{equation}
+\label{eq:ffn}
+\text{FFN}(x) = \text{ReLU}(xW_1 + b_1)W_2 + b_2
+\end{equation}
+
+Hoặc với GELU activation (phổ biến hơn trong các mô hình hiện đại như BERT, GPT):
+
+\begin{equation}
+\label{eq:ffn_gelu}
+\text{FFN}(x) = \text{GELU}(xW_1 + b_1)W_2 + b_2
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $W_1 \in \mathbb{R}^{d_{model} \times d_{ff}}$: Projection lên không gian lớn hơn.
+    \item $W_2 \in \mathbb{R}^{d_{ff} \times d_{model}}$: Projection về lại kích thước gốc.
+    \item Thông thường $d_{ff} = 4 \times d_{model}$ (expansion factor = 4).
+\end{itemize}
+
+Vai trò của FFN:
+\begin{itemize}
+    \item Bổ sung khả năng biểu diễn phi tuyến cho mô hình (Self-Attention về cơ bản là tuyến tính modulo softmax).
+    \item "Xử lý" thông tin đã được aggregated từ Attention layer.
+    \item Có thể coi như một "memory" tĩnh lưu trữ kiến thức học được.
+\end{itemize}
+
+\subsection{Stacking Encoder Layers}
+
+Transformer Encoder bao gồm $N$ Encoder Layers được xếp chồng (stacked) lên nhau:
+
+\begin{equation}
+\text{Encoder}(x) = \text{EncoderLayer}_N(\text{EncoderLayer}_{N-1}(...\text{EncoderLayer}_1(x)...))
+\end{equation}
+
+Trong paper Transformer gốc, $N = 6$. Trong ClusTabNet, bài làm sử dụng $N = 3$ layers để cân bằng giữa model capacity và chi phí tính toán.
+
+Ý nghĩa của việc stack nhiều layers:
+\begin{itemize}
+    \item Layers đầu tiên có thể học các features đơn giản, local.
+    \item Layers sau có thể kết hợp features thành các patterns phức tạp hơn, global hơn.
+    \item Tương tự như các layers trong CNN: từ edges → textures → shapes → objects.
+\end{itemize}
+
+% ============================================================================
+% 2.5 Positional Encoding / Embedding
+% ============================================================================
+\section{Position Embedding}
+\label{sec:position_embedding}
+
+\subsection{Vấn đề: Transformer không có khái niệm thứ tự}
+
+Một đặc điểm quan trọng (và cũng là hạn chế) của Self-Attention là nó hoàn toàn invariant với thứ tự đầu vào. Nói cách khác, nếu ta đảo thứ tự các tokens trong chuỗi đầu vào, ouput của Self-Attention (sau khi map lại về thứ tự ban đầu) sẽ hoàn toàn giống nhau.
+
+Đây là vấn đề nghiêm trọng vì thứ tự rõ ràng quan trọng trong ngôn ngữ. "The cat sat on the mat" có nghĩa hoàn toàn khác với "The mat sat on the cat" dù có cùng tập tokens.
+
+Trong bài toán TSR, vị trí không gian của tokens (tọa độ x, y) là thông tin cực kỳ quan trọng để xác định cấu trúc bảng. Do đó, cần có cơ chế để "inject" thông tin vị trí vào mô hình.
+
+\subsection{Sinusoidal Positional Encoding}
+
+Phương pháp trong paper Transformer gốc sử dụng các hàm sin và cos với tần số khác nhau để encoding vị trí:
+
+\begin{align}
+PE_{(pos, 2i)} &= \sin\left(\frac{pos}{10000^{2i/d_{model}}}\right) \label{eq:pe_sin}\\
+PE_{(pos, 2i+1)} &= \cos\left(\frac{pos}{10000^{2i/d_{model}}}\right) \label{eq:pe_cos}
+\end{align}
+
+Trong đó $pos$ là vị trí trong chuỗi (0, 1, 2, ...) và $i$ là chiều của vector embedding.
+
+Ưu điểm của sinusoidal encoding:
+\begin{itemize}
+    \item Có thể generalize đến các độ dài chuỗi chưa từng thấy trong training.
+    \item Mối quan hệ tương đối giữa các vị trí được encoded: $PE_{pos+k}$ có thể được biểu diễn như một hàm tuyến tính của $PE_{pos}$.
+    \item Không cần học thêm parameters.
+\end{itemize}
+
+\subsection{Learned Position Embedding}
+
+Thay vì dùng công thức cố định, một cách tiếp cận khác là để mô hình tự học position embeddings từ dữ liệu:
+
+\begin{equation}
+PE = \text{Embedding}(position\_ids)
+\end{equation}
+
+Trong đó $\text{Embedding}$ là một lookup table có thể học được.
+
+\subsection{Bounding Box Embedding trong ClusTabNet}
+
+Trong ClusTabNet, bài làm không sử dụng positional encoding theo chiều sequence (vị trí thứ nhất, thứ hai, ...) mà sử dụng \textbf{spatial position embedding} dựa trên tọa độ bounding box thực tế của tokens:
+
+\begin{equation}
+\label{eq:bbox_embed}
+\text{PosEmbed}(bbox) = \text{Linear}([x_{min}, y_{min}, x_{max}, y_{max}])
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $(x_{min}, y_{min})$: Tọa độ góc trên trái của bounding box.
+    \item $(x_{max}, y_{max})$: Tọa độ góc dưới phải của bounding box.
+    \item Tọa độ được chuẩn hóa về khoảng $[0, 1]$ theo kích thước ảnh.
+\end{itemize}
+
+Lý do sử dụng bounding box thay vì sinusoidal:
+\begin{itemize}
+    \item Vị trí 2D (x, y) quan trọng hơn vị trí 1D (thứ tự trong sequence) cho bài toán TSR.
+    \item Kích thước của bounding box (width, height) cũng chứa thông tin hữu ích (ví dụ: header thường có chiều cao lớn hơn).
+    \item Cho phép mô hình học các patterns như "tokens có y tương tự thường cùng hàng".
+\end{itemize}
+
+% % ============================================================================
+% % 2.6 Phương pháp Clustering dựa trên Adjacency Matrix
+% % ============================================================================
+% \section{Phương Pháp Clustering Dựa Trên Adjacency Matrix}
+% \label{sec:clustering}
+
+% \subsection{Ma trận kề (Adjacency Matrix)}
+
+% Ma trận kề là một cách biểu diễn đồ thị (graph) dưới dạng ma trận. Cho một đồ thị có $N$ đỉnh, ma trận kề $A \in \mathbb{R}^{N \times N}$ được định nghĩa:
+
+% \begin{equation}
+% \label{eq:adjacency}
+% A_{ij} = 
+% \begin{cases}
+% 1 & \text{nếu có cạnh nối đỉnh } i \text{ và đỉnh } j\\
+% 0 & \text{ngược lại}
+% \end{cases}
+% \end{equation}
+
+% Đặc điểm:
+% \begin{itemize}
+%     \item Với đồ thị vô hướng: $A$ là ma trận đối xứng ($A_{ij} = A_{ji}$).
+%     \item Đường chéo $A_{ii}$ có thể là 0 hoặc 1 tùy quy ước (có self-loop hay không).
+%     \item Có thể mở rộng sang dạng weighted: $A_{ij} \in [0, 1]$ thể hiện "độ mạnh" của cạnh.
+% \end{itemize}
+
+% \subsection{Ứng dụng trong Table Structure Recognition}
+
+% Trong ClusTabNet, ý tưởng cốt lõi là mô hình hóa cấu trúc bảng như một bài toán clustering: các tokens (từ) thuộc cùng một "nhóm" (cùng hàng, cùng cột, cùng ô) sẽ được nối với nhau trong đồ thị, hay nói cách khác, có $A_{ij} = 1$ trong ma trận kề tương ứng.
+
+% ClusTabNet sử dụng năm ma trận kề để biểu diễn năm loại mối quan hệ khác nhau:
+
+% \begin{enumerate}
+%     \item \textbf{Same Row ($A_{row}$):} Token $i$ và token $j$ thuộc cùng một hàng của bảng.
+%     \begin{itemize}
+%         \item Ý nghĩa: Các tokens trên cùng một dòng ngang.
+%         \item Thách thức: Phân biệt các hàng liền kề, đặc biệt với borderless tables.
+%     \end{itemize}
+    
+%     \item \textbf{Same Column ($A_{col}$):} Token $i$ và token $j$ thuộc cùng một cột của bảng.
+%     \begin{itemize}
+%         \item Ý nghĩa: Các tokens nằm thẳng hàng theo chiều dọc.
+%         \item Thách thức: Xử lý các cột có độ rộng khác nhau.
+%     \end{itemize}
+    
+%     \item \textbf{Same Cell ($A_{cell}$):} Token $i$ và token $j$ thuộc cùng một ô.
+%     \begin{itemize}
+%         \item Ý nghĩa: Là giao của Same Row và Same Column (về mặt logic).
+%         \item Được tính: $A_{cell} = A_{row} \odot A_{col}$ (element-wise product).
+%     \end{itemize}
+    
+%     \item \textbf{Same Header ($A_{header}$):} Token $i$ và token $j$ đều thuộc vùng header.
+%     \begin{itemize}
+%         \item Ý nghĩa: Phân biệt header với body của bảng.
+%         \item Dựa trên: Visual features (in đậm) và/hoặc vị trí (dòng đầu tiên).
+%     \end{itemize}
+    
+%     \item \textbf{Spanning Cell ($A_{span}$):} Token $i$ thuộc ô gộp (spanning cell).
+%     \begin{itemize}
+%         \item Ý nghĩa: Nhận diện các ô trải dài nhiều hàng hoặc cột.
+%         \item Thách thức: Đây là task khó nhất vì ô gộp phá vỡ cấu trúc lưới thông thường.
+%     \end{itemize}
+% \end{enumerate}
+
+% \subsection{Từ Adjacency Matrix đến Clustering}
+
+% Sau khi có ma trận kề dự đoán (với giá trị xác suất $[0, 1]$), cần một bước post-processing để trích xuất các clusters. Thuật toán Connected Components được sử dụng:
+
+% \begin{enumerate}
+%     \item Áp dụng ngưỡng (threshold) để chuyển ma trận xác suất thành ma trận nhị phân.
+%     \item Coi ma trận kề như một đồ thị.
+%     \item Tìm các connected components trong đồ thị.
+%     \item Mỗi connected component tương ứng với một cluster (một hàng, một cột, hoặc một ô).
+% \end{enumerate}
+
+% ============================================================================
+% 2.6 Loss Functions
+% ============================================================================
+\section{Hàm Mất Mát (Loss Functions)}
+\label{sec:loss_functions}
+
+\subsection{Binary Cross-Entropy Loss}
+
+Vì mỗi phần tử trong ma trận kề là một bài toán phân loại nhị phân (thuộc cùng nhóm hay không), bài làm sử dụng Binary Cross-Entropy (BCE) Loss:
+
+\begin{equation}
+\label{eq:bce}
+\mathcal{L}_{BCE} = -\frac{1}{N}\sum_{i=1}^{N}\left[y_i\log(\hat{y}_i) + (1-y_i)\log(1-\hat{y}_i)\right]
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $y_i \in \{0, 1\}$: Nhãn ground truth.
+    \item $\hat{y}_i \in (0, 1)$: Xác suất dự đoán.
+    \item $N$: Tổng số pairs cần dự đoán (với $n$ tokens, $N = n^2$).
+\end{itemize}
+
+\subsection{Vấn đề Class Imbalance}
+
+Trong bài toán TSR, số lượng cặp không cùng nhóm thường lớn hơn rất nhiều so với số cặp cùng nhóm. Ví dụ: trong bảng 10x10 với 100 tokens:
+\begin{itemize}
+    \item Tổng số pairs: $100 \times 100 = 10,000$.
+    \item Số pairs cùng hàng (giả sử 10 tokens/hàng): $10 \times 10 \times 10 = 1,000$.
+    \item Tỷ lệ positive: $10\%$.
+\end{itemize}
+
+Với tỷ lệ không cân bằng này, mô hình có xu hướng dự đoán tất cả là negative (không cùng nhóm) vì đây là "lựa chọn an toàn" để minimize loss.
+
+\subsection{Weighted Loss cho Class Imbalance}
+
+Để giải quyết class imbalance, sử dụng weighted loss với trọng số cao hơn cho positive class:
+
+\begin{equation}
+\label{eq:weighted_bce}
+\mathcal{L}_{weighted} = -\frac{1}{N}\sum_{i=1}^{N}\left[w_1 \cdot y_i\log(\hat{y}_i) + w_0 \cdot (1-y_i)\log(1-\hat{y}_i)\right]
+\end{equation}
+
+Trong đó $w_1 > w_0$ để tăng "hình phạt" khi mô hình bỏ sót positive samples. Cụ thể trong triển khai, bài làm sử dụng pos\_weight nghịch đảo với tỷ lệ positive/negative trong dữ liệu.
+
+\subsection{Multi-task Loss}
+
+Với năm tasks (five clustering heads), tổng loss là weighted sum của các task losses:
+
+\begin{equation}
+\mathcal{L}_{total} = \sum_{t=1}^{5} \lambda_t \mathcal{L}_t
+\end{equation}
+
+Trong đó $\lambda_t$ là trọng số cho task $t$. Các trọng số này có thể được:
+\begin{itemize}
+    \item Đặt thủ công dựa trên độ quan trọng của từng task.
+    \item Học tự động (learned task weights) như trong Uncertainty Weighting.
+\end{itemize}
+
+% ============================================================================
+% 2.8 ClusterTabNet
+% ============================================================================
+\section{Mô hình ClusterTabNet}
+\label{sec:clustertabnet}
+
+Trong đồ án này, nhóm tham khảo và triển khai phương pháp được đề xuất trong bài báo \textbf{``ClusterTabNet: Supervised clustering method for table detection and table structure recognition''} \cite{clustabnet2024}. Đây là một hướng tiếp cận mới mẻ, coi bài toán nhận dạng cấu trúc bảng (Table Structure Recognition - TSR) như một bài toán phân cụm có giám sát (supervised clustering).
+
+\subsection{Ý tưởng cốt lõi}
+
+Khác với các phương pháp truyền thống dựa trên phát hiện đối tượng (như Faster R-CNN, DETR) hay semantic segmentation, ClusterTabNet tiếp cận vấn đề theo hướng "bottom-up":
+
+\begin{itemize}
+    \item \textbf{Đầu vào:} Tập hợp các từ (words) hoặc tokens cùng với tọa độ bounding box của chúng, thường là đầu ra của module OCR.
+    
+    \item \textbf{Mục tiêu:} Dự đoán mối quan hệ giữa từng cặp từ. Nếu hai từ có mối quan hệ cụ thể (ví dụ: cùng hàng, cùng cột), chúng được coi là thuộc cùng một "cụm" (cluster).
+    
+    \item \textbf{Biểu diễn:} Cấu trúc bảng được mô hình hóa dưới dạng các đồ thị (graphs), trong đó các đỉnh (nodes) là các từ vựng và các cạnh (edges) biểu thị mối quan hệ. Ma trận kề của đồ thị chính là output trực tiếp của mô hình.
+\end{itemize}
+
+\subsection{So sánh với các phương pháp khác}
+
+\begin{table}[H]
+\centering
+\caption{So sánh ClusterTabNet với các phương pháp TSR khác}
+\label{tab:method_comparison}
+\begin{tabular}{|l|p{5cm}|p{5cm}|}
+\hline
+\textbf{Phương pháp} & \textbf{Ưu điểm} & \textbf{Nhược điểm} \\
+\hline
+Object Detection (Faster R-CNN, DETR) & 
+- Kết quả trực tiếp là bounding boxes \newline
+- Có thể xử lý ảnh raw & 
+- Heavy models, nhiều parameters \newline
+- Khó xử lý spanning cells \\
+\hline
+Segmentation-based & 
+- Pixel-level accuracy \newline
+- Xử lý tốt complex layouts & 
+- Cần post-processing phức tạp \newline
+- Chi phí annotation cao \\
+\hline
+Graph-based (ClusterTabNet) & 
+- Nhẹ và nhanh \newline
+- Xử lý tự nhiên spanning cells \newline
+- Không phụ thuộc grid structure & 
+- Phụ thuộc vào chất lượng OCR \newline
+- $O(n^2)$ complexity \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Kiến trúc tổng quát}
+
+Mô hình ClusTabNet sử dụng kiến trúc \textbf{Transformer Encoder} đơn giản nhưng hiệu quả:
+
+\begin{enumerate}
+    \item \textbf{Embedding Layer:} Kết hợp ngữ nghĩa của từ (text embedding) và thông tin vị trí không gian (bounding box embedding) thành một biểu diễn thống nhất.
+    
+    \item \textbf{Transformer Encoder:} Sử dụng cơ chế Self-Attention để mô hình hóa sự tương tác giữa tất cả các cặp từ trong tài liệu. Qua nhiều layers, mô hình học được biểu diễn phong phú chứa thông tin về ngữ cảnh và mối quan hệ không gian.
+    
+    \item \textbf{Clustering Heads:} Các lớp Linear ở đầu ra dự đoán trực tiếp các ma trận kề (adjacency matrices) tương ứng với các loại quan hệ khác nhau (hàng, cột, cell, header, spanning).
+\end{enumerate}
+
+\subsection{Ưu điểm của ClusterTabNet}
+
+Theo \cite{clustabnet2024}, phương pháp này có những ưu điểm nổi bật:
+
+\begin{itemize}
+    \item \textbf{Nhẹ và Nhanh:} Kiến trúc đơn giản với chỉ vài Transformer layers, ít tham số hơn nhiều so với các mô hình object detection như DETR hay TableFormer. Điều này cho phép inference nhanh, phù hợp với ứng dụng thực tế.
+    
+    \item \textbf{Hiệu quả:} Đạt độ chính xác tương đương hoặc cao hơn các phương pháp SOTA trên các tập dữ liệu benchmark lớn như PubTables-1M, PubTabNet, và FinTabNet.
+    
+    \item \textbf{Linh hoạt:} Có thể xử lý đồng thời cả phát hiện bảng (Table Detection) và nhận dạng cấu trúc (Structure Recognition) trong cùng một forward pass, bằng cách thêm một head dự đoán "same table".
+    
+    \item \textbf{End-to-end Trainable:} Toàn bộ pipeline từ embedding đến prediction có thể được huấn luyện end-to-end với gradient descent, không cần các bước thủ công hay rule-based.
+    
+    \item \textbf{Xử lý tốt Spanning Cells:} Vì mô hình trực tiếp dự đoán mối quan hệ pairwise, nó không bị ràng buộc bởi giả định về cấu trúc lưới cứng nhắc, cho phép xử lý tự nhiên các ô gộp span nhiều hàng/cột.
+\end{itemize}
+
+\subsection{Hạn chế và thách thức}
+
+Bên cạnh các ưu điểm, phương pháp này cũng có một số hạn chế:
+
+\begin{itemize}
+    \item \textbf{Phụ thuộc vào OCR:} Chất lượng dự đoán phụ thuộc vào chất lượng OCR đầu vào. Nếu OCR bỏ sót từ hoặc nhận sai bounding box, cấu trúc bảng sẽ bị ảnh hưởng.
+    
+    \item \textbf{Độ phức tạp $O(n^2)$:} Với $n$ tokens, cần dự đoán $n^2$ pairs. Điều này giới hạn khả năng xử lý các bảng rất lớn (hàng trăm tokens).
+    
+\end{itemize}
+
+Trong chương tiếp theo, bài làm sẽ trình bày chi tiết việc thiết kế và triển khai từng thành phần của mô hình dựa trên các kiến thức nền tảng đã được trình bày.

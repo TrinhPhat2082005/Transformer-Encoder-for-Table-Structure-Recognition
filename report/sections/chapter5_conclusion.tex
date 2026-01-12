@@ -1,0 +1,279 @@
+% ============================================================================
+% CHAPTER 5: CONCLUSION - KẾT LUẬN
+% ============================================================================
+\chapter{Kết Luận}
+\label{chap:conclusion}
+
+Chương cuối này tổng kết toàn bộ quá trình thực hiện đồ án, đánh giá mức độ hoàn thành các mục tiêu đề ra, phân tích những hạn chế còn tồn tại, và đề xuất các hướng phát triển tiềm năng trong tương lai. Qua việc nghiên cứu và triển khai thuật toán ClusTabNet, nhóm đã có được những hiểu biết sâu sắc về cả lý thuyết lẫn thực tiễn của bài toán nhận dạng cấu trúc bảng.
+
+% ============================================================================
+% 5.1 Tổng kết
+% ============================================================================
+\section{Tổng Kết Kết Quả Đạt Được}
+\label{sec:summary}
+
+Đồ án đã hoàn thành việc nghiên cứu và triển khai thuật toán ClusTabNet cho bài toán nhận dạng cấu trúc bảng (Table Structure Recognition). Dưới đây là đánh giá chi tiết kết quả dựa trên các mục tiêu cụ thể đã đề ra trong Chương 1.
+
+\subsection{Đánh giá theo mục tiêu}
+
+\begin{table}[H]
+\centering
+\caption{Đánh giá hoàn thành mục tiêu}
+\label{tab:objective_evaluation}
+\begin{tabular}{|c|p{6cm}|c|p{3cm}|}
+\hline
+\textbf{ID} & \textbf{Mục tiêu} & \textbf{Hoàn thành} & \textbf{Ghi chú} \\
+\hline
+MT1 & Nghiên cứu kiến thức nền tảng về Transformer, Self-Attention, Adjacency Matrix Clustering & \checkmark & Trình bày chi tiết trong Chương 2 \\
+\hline
+MT2 & Triển khai hoàn chỉnh mô hình ClusTabNet (Embedding + Encoder + 5 Heads) & \checkmark & Code from scratch, không dùng thư viện có sẵn \\
+\hline
+MT3 & Xử lý dữ liệu từ định dạng PubTables-1M, xây dựng vocabulary và adjacency labels & \checkmark & Pipeline hoàn chỉnh với IOA-based matching \\
+\hline
+MT4 & Huấn luyện và đánh giá mô hình với nhiều metrics & \checkmark & Object-Level F1 avg = 0.66 \\
+\hline
+MT5 & Phát triển công cụ visualization & \checkmark & Hiển thị row, col, cell, header với màu sắc \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Tổng kết:} Tất cả 5 mục tiêu chính đã được hoàn thành. Mặc dù kết quả định lượng (F1 = 0.66) thấp hơn so với paper gốc (do giới hạn về dữ liệu và tài nguyên), xu hướng (trends) giữa các tasks tương đồng, chứng minh việc hiện thực đúng hướng.
+
+\subsection{Những đóng góp chính}
+
+Qua quá trình thực hiện đồ án, các đóng góp chính bao gồm:
+
+\begin{enumerate}
+    \item \textbf{Triển khai hoàn chỉnh từ đầu (From Scratch):} 
+    \begin{itemize}
+        \item Xây dựng thành công toàn bộ pipeline từ data preprocessing, model architecture, training loop, đến evaluation.
+        \item Không phụ thuộc vào các hiện thực có sẵn của Transformer, giúp hiểu sâu từng thành phần.
+        \item Code được tổ chức modular, dễ đọc và có thể mở rộng.
+    \end{itemize}
+    
+    \item \textbf{Custom Transformer Encoder:} 
+    \begin{itemize}
+        \item Triển khai riêng biệt Multi-Head Attention, Position-wise FFN, Layer Normalization.
+        \item Hiểu rõ cách các thành phần tương tác: residual connections, masking, scaling factors.
+        \item Có thể dễ dàng customize (thay đổi activation, thêm relative position bias, v.v.).
+    \end{itemize}
+    
+    \item \textbf{Multi-task Learning Framework:} 
+    \begin{itemize}
+        \item Thiết kế 5 clustering heads độc lập cho 5 loại mối quan hệ.
+        \item Hiện thực weighted multi-task loss với task-specific weights.
+        \item Học được sự khác biệt về độ khó giữa các tasks (Header dễ, Row khó).
+    \end{itemize}
+    
+    \item \textbf{Comprehensive Evaluation:} 
+    \begin{itemize}
+        \item Hiện thực cả pixel-level và object-level metrics.
+        \item Tích hợp COCO-style AP/AR cho so sánh công bằng.
+        \item Phân tích chi tiết hiệu năng từng task (per-task performance) để nhận diện các điểm nghẽn.
+    \end{itemize}
+    
+    \item \textbf{Visualization Tool:} 
+    \begin{itemize}
+        \item Phát triển công cụ overlay structure predictions lên ảnh gốc.
+        \item Hỗ trợ debug và qualitative analysis hiệu quả.
+        \item Có thể mở rộng cho demo và presentation.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Kiến thức và kỹ năng thu được}
+
+Ngoài sản phẩm cụ thể là mã nguồn và báo cáo, quá trình thực hiện đồ án giúp tích lũy nhiều kiến thức và kỹ năng quý giá:
+
+\textbf{Về lý thuyết:}
+\begin{itemize}
+    \item Hiểu sâu kiến trúc Transformer và cơ chế Self-Attention từ góc nhìn toán học.
+    \item Nắm vững phương pháp biểu diễn và phân tích cấu trúc bảng.
+    \item Kiến thức về các metrics đánh giá trong object detection và structure recognition.
+\end{itemize}
+
+\textbf{Về thực hành:}
+\begin{itemize}
+    \item Kỹ năng triển khai deep learning models với PyTorch.
+    \item Kinh nghiệm xử lý class imbalance và multi-task learning.
+    \item Kỹ năng debugging và visualization cho DL systems.
+    \item Quản lý thí nghiệm với checkpointing và logging.
+\end{itemize}
+
+% ============================================================================
+% 5.2 Hạn chế
+% ============================================================================
+\section{Hạn Chế}
+\label{sec:limitations}
+
+Mặc dù đạt được các mục tiêu đề ra, đồ án vẫn còn một số hạn chế cần được nhìn nhận khách quan:
+
+\subsection{Hạn chế về dữ liệu}
+
+\begin{itemize}
+    \item \textbf{Subset nhỏ:} Chỉ sử dụng 5,000 samples training so với hơn 1 triệu trong PubTables-1M đầy đủ. Điều này giới hạn khả năng generalization của mô hình.
+    
+    \item \textbf{Domain hẹp:} Dữ liệu chỉ từ scientific papers, có thể không hoạt động tốt (perform tốt) trên financial tables, invoices, hoặc handwritten forms.
+    
+    \item \textbf{Ngôn ngữ đơn:} Chỉ test trên tiếng Anh, chưa validate trên các ngôn ngữ khác như tiếng Việt, tiếng Trung, hay các ngôn ngữ với hệ thống viết phức tạp.
+\end{itemize}
+
+\subsection{Hạn chế về mô hình}
+
+\begin{itemize}
+    \item \textbf{Hiệu năng Row recognition thấp:} F1 $\approx$ 0.42 cho Same Row là bottleneck chính, ảnh hưởng đến overall structure quality.
+    
+    \item \textbf{Không tích hợp visual features:} Phiên bản hiện tại chỉ dùng text và position, bỏ qua thông tin quý giá từ đường kẻ, font formatting, màu sắc.
+    
+    \item \textbf{Phụ thuộc OCR:} Giả định OCR hoàn hảo. Trong thực tế, OCR errors (đặc biệt với tables scan chất lượng thấp) sẽ propagate thành structure errors.
+    
+    \item \textbf{Complexity $O(n^2)$:} Với bảng rất lớn (> 500 tokens), bộ nhớ và tính toán trở nên quá lớn (prohibitive). Không có cơ chế để xử lý các chuỗi cực dài (extremely long sequences).
+\end{itemize}
+
+\subsection{Hạn chế về đánh giá}
+
+\begin{itemize}
+    \item \textbf{Chưa real-world testing:} Chưa test trên documents thực tế ngoài benchmark dataset.
+    
+    \item \textbf{Thiếu user study:} Chưa đánh giá usefulness trong context của downstream applications (extraction, QA).
+    
+    \item \textbf{So sánh chưa đầy đủ:} Chưa so sánh trực tiếp với các phương pháp SOTA khác như TableFormer, DETR-based methods.
+\end{itemize}
+
+% ============================================================================
+% 5.3 Hướng phát triển
+% ============================================================================
+\section{Hướng Phát Triển}
+\label{sec:future_work}
+
+Dựa trên kết quả và các hạn chế đã xác định, bài làm đề xuất các hướng phát triển tiềm năng trong tương lai:
+
+\subsection{Cải tiến mô hình}
+
+\begin{enumerate}
+    \item \textbf{Tích hợp Visual Features từ CNN:}
+    \begin{itemize}
+        \item Sử dụng CNN backbone (ResNet, EfficientNet) để extract visual features từ ảnh bảng.
+        \item Mỗi token sẽ có thêm vector CNN features từ vùng bounding box tương ứng (ROI pooling).
+        \item Fusion strategy: Concatenate hoặc cross-attention giữa text-position và visual features.
+        \item Dự kiến cải thiện đáng kể cho borderless tables và detection of grid lines.
+    \end{itemize}
+    
+    \item \textbf{Pre-trained Language Model Embeddings:}
+    \begin{itemize}
+        \item Thay thế learnable text embeddings bằng frozen hoặc fine-tuned embeddings từ BERT, RoBERTa.
+        \item Đặc biệt hiệu quả với LayoutLM-style models đã được pre-train trên document data.
+        \item Giảm vocab size dependency và improve generalization.
+    \end{itemize}
+    
+    \item \textbf{Graph Neural Networks Integration:}
+    \begin{itemize}
+        \item Thay vì purely self-attention, kết hợp GNN layers để explicitly model spatial relationships.
+        \item Có thể sử dụng initial graph từ spatial proximity, sau đó refine bằng learned edges.
+        \item Potential improvement cho column alignment và row separation.
+    \end{itemize}
+    
+    \item \textbf{Learned/Adaptive Thresholds:}
+    \begin{itemize}
+        \item Thay vì fixed threshold 0.5 cho tất cả tasks, học task-specific thresholds.
+        \item Có thể hiện thực như một small MLP dự đoán optimal threshold per sample.
+        \item Giúp handle varying difficulty across different tables.
+    \end{itemize}
+    
+    \item \textbf{Efficient Attention Mechanisms:}
+    \begin{itemize}
+        \item Apply linear attention (Performer, Linear Transformer) để giảm complexity từ $O(n^2)$ xuống $O(n)$.
+        \item Cho phép xử lý tables với hàng nghìn tokens.
+        \item Trade-off: có thể giảm performance một chút so với full attention.
+    \end{itemize}
+\end{enumerate}
+
+% \subsection{Mở rộng ứng dụng}
+
+% \begin{enumerate}
+%     \item \textbf{End-to-end OCR + TSR Pipeline:}
+%     \begin{itemize}
+%         \item Tích hợp module OCR (như PaddleOCR, EasyOCR) với ClusTabNet thành pipeline hoàn chỉnh.
+%         \item Input: Raw table image. Output: Structured table data (rows, columns, cells with text).
+%         \item Joint training có thể cải thiện robustness với OCR errors.
+%     \end{itemize}
+    
+%     \item \textbf{Multi-language Support:}
+%     \begin{itemize}
+%         \item Mở rộng vocabulary và training data cho tiếng Việt, tiếng Trung, Nhật, Hàn.
+%         \item Xem xét character-level hoặc subword tokenization để handle diverse scripts.
+%         \item Potential challenges: right-to-left languages, vertical text in Asian tables.
+%     \end{itemize}
+    
+%     \item \textbf{Real-time Processing for Mobile/Web:}
+%     \begin{itemize}
+%         \item Model quantization (INT8, FP16) để giảm size và tăng speed.
+%         \item ONNX export cho deployment trên diverse platforms.
+%         \item Potential: On-device inference trên mobile phones cho document scanning apps.
+%     \end{itemize}
+    
+%     \item \textbf{Table-to-Text Generation:}
+%     \begin{itemize}
+%         \item Kết hợp ClusTabNet với Large Language Models (LLMs) để generate natural language descriptions of tables.
+%         \item Useful cho accessibility (mô tả bảng cho người khiếm thị) và summarization.
+%     \end{itemize}
+    
+%     \item \textbf{Table Question Answering:}
+%     \begin{itemize}
+%         \item Sử dụng structure output từ ClusTabNet làm input cho Table QA models.
+%         \item Accurate structure recognition là prerequisite cho accurate QA.
+%     \end{itemize}
+% \end{enumerate}
+
+% \subsection{Triển khai thực tế}
+
+% \begin{enumerate}
+%     \item \textbf{REST API Service:}
+%     \begin{itemize}
+%         \item Đóng gói model dưới dạng Docker container với FastAPI/Flask backend.
+%         \item Endpoints cho upload image/PDF, receive structured table JSON.
+%         \item Scalable với load balancing và GPU inference servers.
+%     \end{itemize}
+    
+%     \item \textbf{Web Application Demo:}
+%     \begin{itemize}
+%         \item Frontend cho phép drag-drop documents, preview results.
+%         \item Export to Excel, CSV, HTML formats.
+%         \item Interactive correction: user có thể fix errors, improve model qua feedback.
+%     \end{itemize}
+    
+%     \item \textbf{Integration với RPA (Robotic Process Automation):}
+%     \begin{itemize}
+%         \item Plugin cho UiPath, Automation Anywhere để extract table data from documents.
+%         \item Use case: Auto-process invoices, forms, reports trong enterprise workflows.
+%     \end{itemize}
+    
+%     \item \textbf{CI/CD Pipeline cho ML:}
+%     \begin{itemize}
+%         \item Automate training trên new data.
+%         \item Model versioning và A/B testing.
+%         \item Monitoring performance in production.
+%     \end{itemize}
+% \end{enumerate}
+
+% ============================================================================
+% 5.4 Kết luận cuối cùng
+% ============================================================================
+\section{Lời Kết}
+\label{sec:final_words}
+
+Đồ án "ClusTabNet: Nhận Dạng Cấu Trúc Bảng Sử Dụng Clustering và Transformer" đã hoàn thành mục tiêu nghiên cứu và triển khai thuật toán ClusTabNet cho bài toán Table Structure Recognition. Thông qua quá trình thực hiện, nhóm đã:
+
+\begin{itemize}
+    \item Nắm vững các kiến thức nền tảng về kiến trúc Transformer, cơ chế Self-Attention, và phương pháp phân cụm dựa trên ma trận kề.
+    
+    \item Triển khai thành công toàn bộ pipeline từ data processing, model architecture, training, đến evaluation và visualization.
+    
+    \item Đạt được kết quả đáng khích lệ với F1 trung bình 0.66, đặc biệt xuất sắc ở Header recognition (0.92) và Spanning Cell detection (0.82).
+    
+    \item Hiểu được những thách thức thực tế của bài toán TSR, đặc biệt là row segmentation và class imbalance.
+\end{itemize}
+
+Kết quả đạt được cho thấy tiềm năng to lớn của phương pháp dựa trên Deep Learning và kiến trúc Transformer trong việc giải quyết các bài toán Document AI phức tạp. Mặc dù còn những hạn chế cần khắc phục, đồ án đã tạo nền tảng vững chắc cho các nghiên cứu và phát triển tiếp theo.
+
+Với sự phát triển không ngừng của các kỹ thuật AI và nhu cầu tự động hóa xử lý tài liệu ngày càng tăng, nhóm tin rằng bài toán Table Structure Recognition sẽ tiếp tục là một lĩnh vực nghiên cứu sôi động và có tính ứng dụng cao trong những năm tới.
+

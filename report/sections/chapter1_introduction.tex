@@ -1,0 +1,151 @@
+% ============================================================================
+% CHAPTER 1: INTRODUCTION - GIỚI THIỆU
+% ============================================================================
+\chapter{Giới Thiệu}
+\label{chap:introduction}
+
+% ============================================================================
+% 1.1 Đặt vấn đề và Tính cấp thiết
+% ============================================================================
+\section{Đặt Vấn Đề và Tính Cấp Thiết}
+\label{sec:problem_statement}
+
+\subsection{Bối cảnh và tầm quan trọng}
+
+Trong kỷ nguyên số hóa toàn cầu, lượng tài liệu cần được xử lý và trích xuất thông tin tự động đang tăng với tốc độ chưa từng có. Theo thống kê của IDC, lượng dữ liệu toàn cầu đạt 64.2 zettabytes vào năm 2020 và dự kiến sẽ tăng gấp ba lần vào năm 2025. Trong số đó, một phần đáng kể là các tài liệu văn bản chứa thông tin có cấu trúc dưới dạng bảng biểu.
+
+Bảng biểu (tables) là một trong những cấu trúc phổ biến và quan trọng nhất để trình bày dữ liệu có tổ chức trong các tài liệu. Từ báo cáo tài chính hàng quý của các tập đoàn đa quốc gia, các bài báo khoa học trong lĩnh vực y sinh học, đến các hóa đơn thương mại và biểu mẫu hành chính - bảng biểu xuất hiện ở khắp mọi nơi và đóng vai trò then chốt trong việc truyền tải thông tin một cách ngắn gọn, có hệ thống.
+
+Tuy nhiên, việc tự động nhận dạng và tái tạo cấu trúc bảng từ hình ảnh hoặc tài liệu scan (Table Structure Recognition - TSR) vẫn là một thách thức lớn trong cộng đồng nghiên cứu Trí tuệ Nhân tạo và Xử lý Tài liệu (Document AI). Không giống như việc nhận dạng văn bản thuần túy bằng OCR (Optical Character Recognition), TSR đòi hỏi khả năng hiểu biết về mối quan hệ không gian và ngữ nghĩa phức tạp giữa các thành phần trong bảng.
+
+\subsection{Các thách thức trong nhận dạng cấu trúc bảng}
+
+Bài toán Table Structure Recognition đối mặt với nhiều thách thức kỹ thuật phức tạp:
+
+\begin{itemize}
+    \item \textbf{Đa dạng về cấu trúc hình học:} Bảng có thể xuất hiện dưới vô số hình thức khác nhau. Có bảng với đường kẻ rõ ràng (bordered tables), bảng không có đường viền (borderless tables), bảng với các đường kẻ một phần, hoặc bảng lồng nhau (nested tables). Mỗi loại đòi hỏi một chiến lược xử lý khác nhau, và một hệ thống TSR mạnh mẽ cần phải xử lý được tất cả các trường hợp này.
+    
+    \item \textbf{Chất lượng đầu vào không đồng nhất:} Trong thực tế, tài liệu đầu vào thường có chất lượng rất khác nhau. Tài liệu scan từ máy photocopy cũ có thể bị nhiễu, mờ, hoặc méo hình học. Ảnh chụp bằng điện thoại di động có thể bị nghiêng, thiếu sáng, hoặc có bóng đổ. Những yếu tố này gây khó khăn đáng kể cho cả giai đoạn OCR lẫn giai đoạn nhận dạng cấu trúc.
+    
+    \item \textbf{Ô gộp (Spanning cells):} Đây là một trong những thách thức khó nhất của bài toán TSR. Các ô trải dài qua nhiều hàng (row span) hoặc nhiều cột (column span) phá vỡ cấu trúc lưới (grid) thông thường của bảng. Việc xác định chính xác phạm vi của ô gộp đòi hỏi không chỉ thông tin vị trí mà còn cần hiểu ngữ nghĩa của nội dung.
+    
+    \item \textbf{Phân biệt header và body:} Vùng tiêu đề (header) của bảng thường có vai trò ngữ nghĩa đặc biệt - chúng định nghĩa ý nghĩa của các cột hoặc hàng dữ liệu. Tuy nhiên, việc phân biệt header với phần thân bảng (body) không phải lúc nào cũng đơn giản, đặc biệt khi không có sự khác biệt về định dạng hiển thị (in đậm, căn giữa, v.v.).
+    
+    \item \textbf{Lỗi từ giai đoạn OCR:} Bất kỳ hệ thống TSR nào cũng phải đối mặt với việc xử lý lỗi từ giai đoạn OCR phía trước. Các lỗi như nhận sai ký tự, bỏ sót từ, hoặc tách/gộp từ không chính xác đều ảnh hưởng đến chất lượng nhận dạng cấu trúc cuối cùng.
+\end{itemize}
+
+\subsection{Tính ứng dụng thực tiễn}
+
+Nhận dạng cấu trúc bảng có ý nghĩa thực tiễn to lớn trong nhiều lĩnh vực, tạo ra giá trị kinh tế và xã hội đáng kể:
+
+\begin{enumerate}
+    \item \textbf{Số hóa và lưu trữ tài liệu:} Trong bối cảnh chuyển đổi số, các tổ chức cần số hóa hàng triệu trang tài liệu lịch sử. Khả năng tự động chuyển đổi bảng từ định dạng PDF hoặc ảnh scan sang các định dạng có thể chỉnh sửa như Excel, CSV, hoặc HTML giúp tiết kiệm hàng nghìn giờ làm việc thủ công và giảm thiểu sai sót do con người.
+    
+    \item \textbf{Trích xuất dữ liệu tự động trong tài chính:} Ngành tài chính là một trong những lĩnh vực có nhu cầu cao nhất về TSR. Việc tự động trích xuất dữ liệu từ báo cáo tài chính, bảng cân đối kế toán, hóa đơn, và các chứng từ kế toán giúp tự động hóa quy trình kiểm toán, phân tích đầu tư, và đánh giá rủi ro tín dụng.
+    
+    \item \textbf{Question Answering trên tài liệu:} Với sự phát triển của các hệ thống AI đàm thoại, khả năng trả lời câu hỏi dựa trên nội dung bảng (Table Question Answering) đang trở nên ngày càng quan trọng. Để làm được điều này, hệ thống trước tiên cần hiểu được cấu trúc của bảng một cách chính xác.
+    
+    \item \textbf{Nghiên cứu khoa học và y sinh:} Trong lĩnh vực y sinh học, việc tổng hợp kết quả từ hàng nghìn bài báo khoa học (meta-analysis) đòi hỏi phải trích xuất dữ liệu từ các bảng kết quả thí nghiệm. TSR tự động giúp tăng tốc đáng kể quá trình này và giảm thiểu sai sót trong việc nhập liệu thủ công.
+    
+    \item \textbf{Xử lý biểu mẫu hành chính:} Các cơ quan nhà nước và tổ chức lớn thường phải xử lý hàng triệu biểu mẫu hành chính mỗi năm. Khả năng tự động nhận dạng cấu trúc và trích xuất thông tin từ các biểu mẫu này giúp giảm thiểu thời gian xử lý và nâng cao hiệu quả phục vụ công dân.
+\end{enumerate}
+
+\subsection{Hạn chế của các phương pháp truyền thống}
+
+Trước khi Deep Learning trở nên phổ biến, các phương pháp nhận dạng cấu trúc bảng chủ yếu dựa trên các kỹ thuật sau:
+
+\begin{itemize}
+    \item \textbf{Phương pháp dựa trên luật (Rule-based):} Sử dụng các luật heuristic để phát hiện đường kẻ, phân tách hàng và cột. Phương pháp này hoạt động tốt với các bảng có cấu trúc đơn giản và đường kẻ rõ ràng, nhưng thất bại hoàn toàn với borderless tables hoặc bảng có cấu trúc phức tạp.
+    
+    \item \textbf{Phương pháp dựa trên template:} Yêu cầu định nghĩa trước template cho từng loại tài liệu. Phương pháp này thiếu tính tổng quát hóa và không thể xử lý các loại bảng mới chưa từng gặp.
+    
+    \item \textbf{Phương pháp xử lý ảnh truyền thống:} Sử dụng các kỹ thuật như Hough Transform để phát hiện đường thẳng, sau đó suy luận cấu trúc bảng. Phương pháp này rất nhạy cảm với nhiễu và chất lượng ảnh đầu vào.
+\end{itemize}
+
+Các phương pháp dựa trên Deep Learning, đặc biệt là các mô hình sử dụng kiến trúc Transformer, đã cho thấy khả năng vượt trội trong việc học các biểu diễn phức tạp và xử lý các trường hợp đa dạng. Đây là động lực chính để đồ án này lựa chọn nghiên cứu và triển khai thuật toán ClusTabNet - một phương pháp tiên tiến kết hợp Transformer với kỹ thuật phân cụm.
+
+% ============================================================================
+% 1.2 Mục tiêu đề tài
+% ============================================================================
+\section{Mục Tiêu Đề Tài}
+\label{sec:objectives}
+
+\subsection{Mục tiêu tổng quát}
+
+Mục tiêu tổng quát của đồ án là nghiên cứu, tìm hiểu sâu, và triển khai thuật toán ClusTabNet để giải quyết bài toán nhận dạng cấu trúc bảng (Table Structure Recognition). Đồ án hướng tới việc xây dựng một hệ thống hoàn chỉnh từ khâu xử lý dữ liệu, huấn luyện mô hình, đến đánh giá và trực quan hóa kết quả - tạo nền tảng vững chắc cho các ứng dụng xử lý tài liệu thông minh trong tương lai.
+
+Đồ án không chỉ dừng lại ở việc "làm cho nó chạy được", mà còn đặt mục tiêu hiểu sâu từng thành phần của kiến trúc, từ cơ chế Self-Attention trong Transformer đến phương pháp biểu diễn cấu trúc bảng dưới dạng ma trận kề (adjacency matrix). Sự hiểu biết sâu sắc này sẽ giúp có khả năng cải tiến, mở rộng, và áp dụng vào các bài toán tương tự trong lĩnh vực Document AI.
+
+\subsection{Mục tiêu cụ thể}
+
+\begin{enumerate}[label=\textbf{MT\arabic*:}]
+    \item \textbf{Nghiên cứu kiến thức nền tảng:} Tìm hiểu và nắm vững các khái niệm lý thuyết cốt lõi làm nền tảng cho ClusTabNet:
+    \begin{itemize}
+        \item Cơ chế Attention và Self-Attention: Hiểu rõ trực quan tại sao Attention hoạt động, ý nghĩa của Query, Key, Value, và cách chúng tương tác để tạo ra trọng số attention.
+        \item Kiến trúc Transformer Encoder: Nắm vững cấu trúc layer, vai trò của Multi-Head Attention, Feed-Forward Network, Residual Connections, và Layer Normalization.
+        \item Phương pháp phân cụm dựa trên ma trận kề: Hiểu cách biểu diễn mối quan hệ giữa các phần tử dưới dạng đồ thị và ma trận kề, cách áp dụng vào bài toán TSR.
+    \end{itemize}
+    
+    \item \textbf{Triển khai mô hình hoàn chỉnh:} Xây dựng từ đầu (from scratch) toàn bộ mô hình ClusTabNet bao gồm:
+    \begin{itemize}
+        \item \textbf{Mô-đun ClusTabEmbedding:} Kết hợp thông tin văn bản (text embedding) và thông tin vị trí không gian (bounding box embedding) thành một biểu diễn thống nhất. Thiết kế chiến lược fusion phù hợp để cân bằng giữa hai nguồn thông tin.
+        \item \textbf{Custom Transformer Encoder:} Triển khai riêng biệt (không sử dụng thư viện có sẵn) kiến trúc Transformer Encoder với đầy đủ các thành phần: Multi-Head Self-Attention, Position-wise Feed-Forward Network, Layer Normalization, và Residual Connections.
+        \item \textbf{Năm đầu ra phân cụm (Clustering Heads):} Thiết kế năm đầu ra độc lập để dự đoán đồng thời các mối quan hệ: cùng hàng (same row), cùng cột (same column), cùng ô (same cell), vùng header, và ô gộp (spanning cell).
+    \end{itemize}
+    
+    \item \textbf{Xử lý dữ liệu:} Thiết kế và triển khai pipeline xử lý dữ liệu hoàn chỉnh:
+    \begin{itemize}
+        \item Phân tích và hiểu định dạng dữ liệu PubTables-1M.
+        \item Xây dựng từ điển (vocabulary) từ tập dữ liệu huấn luyện.
+        \item Triển khai thuật toán sinh nhãn adjacency matrix từ ground truth annotations.
+        \item Thiết kế cơ chế padding và batching cho các bảng có kích thước khác nhau.
+    \end{itemize}
+    
+    \item \textbf{Huấn luyện và đánh giá:} Thực hiện quy trình huấn luyện và đánh giá mô hình một cách khoa học:
+    \begin{itemize}
+        \item Thiết kế hàm loss phù hợp, xử lý vấn đề class imbalance giữa các cặp token cùng nhóm và khác nhóm.
+        \item Huấn luyện mô hình trên tập dữ liệu với các hyperparameters được lựa chọn cẩn thận.
+        \item Đánh giá hiệu quả bằng các metrics phù hợp: Precision, Recall, F1-score ở cả mức pixel-level và object-level.
+        \item So sánh kết quả với paper gốc để đánh giá chất lượng triển khai.
+    \end{itemize}
+    
+    \item \textbf{Trực quan hóa kết quả:} Phát triển công cụ visualization để:
+    \begin{itemize}
+        \item Hiển thị kết quả dự đoán cấu trúc bảng lên ảnh gốc với màu sắc phân biệt cho từng loại cấu trúc (hàng, cột, ô, header).
+        \item Hỗ trợ debug và phân tích lỗi bằng cách so sánh trực quan giữa ground truth và prediction.
+        \item Tạo các ví dụ minh họa cho báo cáo và presentation.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Phạm vi và giới hạn}
+
+Để đảm bảo tính khả thi trong thời gian thực hiện đồ án, các giới hạn sau được đặt ra:
+
+\begin{itemize}
+    \item \textbf{Về dữ liệu:} Sử dụng một subset của PubTables-1M thay vì toàn bộ dataset (hơn 1 triệu samples) do giới hạn về tài nguyên tính toán.
+    \item \textbf{Về đầu vào:} Giả định rằng kết quả OCR (text và bounding boxes) đã có sẵn và chính xác ở mức chấp nhận được. Không triển khai module OCR riêng.
+    \item \textbf{Về visual features:} Phiên bản hiện tại không tích hợp đặc trưng hình ảnh từ CNN backbone, chỉ sử dụng thông tin text và vị trí.
+    \item \textbf{Về ngôn ngữ:} Tập trung vào tài liệu tiếng Anh trong domain khoa học (scientific papers).
+\end{itemize}
+
+% ============================================================================
+% 1.3 Cấu trúc báo cáo
+% ============================================================================
+\section{Cấu Trúc Báo Cáo}
+\label{sec:report_structure}
+
+Báo cáo được tổ chức thành năm chương chính, mỗi chương đảm nhận một vai trò cụ thể trong việc trình bày đồ án:
+
+\begin{description}
+    \item[Chương 1: Giới thiệu] Chương hiện tại, trình bày bối cảnh của bài toán, tầm quan trọng và tính cấp thiết của việc nghiên cứu Table Structure Recognition, các thách thức kỹ thuật cần giải quyết, mục tiêu cụ thể của đồ án, và phạm vi giới hạn.
+    
+    \item[Chương 2: Kiến thức nền tảng] Cung cấp nền tảng lý thuyết cần thiết để hiểu mô hình ClusTabNet. Bao gồm: cơ chế Attention và Self-Attention với các công thức toán học chi tiết, kiến trúc Transformer Encoder với từng thành phần được phân tích kỹ lưỡng, phương pháp biểu diễn cấu trúc bảng dưới dạng ma trận kề, và các hàm mất mát sử dụng trong training.
+    
+    \item[Chương 3: Phân tích yêu cầu và thiết kế] Phân tích chi tiết yêu cầu bài toán TSR và trình bày thiết kế kiến trúc mô hình ClusTabNet. Mô tả từng module: ClusTabEmbedding, Custom Transformer Encoder, và năm Clustering Heads. Giải thích cách các thành phần tương tác với nhau và luồng xử lý dữ liệu từ đầu vào đến đầu ra.
+    
+    \item[Chương 4: Thực hiện và kiểm thử] Mô tả chi tiết quá trình hiện thực từ code đến việc huấn luyện mô hình. Trình bày pipeline huấn luyện, các hyperparameters được sử dụng, cơ chế đánh giá với nhiều metrics khác nhau. Phân tích sâu kết quả thực nghiệm, so sánh với paper gốc, và thảo luận về các trường hợp thành công và thất bại của mô hình.
+    
+    \item[Chương 5: Kết luận] Tổng kết những kết quả đạt được dựa trên các mục tiêu đã đề ra, đánh giá một cách khách quan các hạn chế của đồ án, và đề xuất các hướng phát triển tiềm năng trong tương lai.
+\end{description}
+
+Ngoài ra, báo cáo còn bao gồm phần \textbf{Tóm tắt} ở đầu, \textbf{Danh mục hình ảnh} và \textbf{Danh mục bảng} để tiện tra cứu, \textbf{Tài liệu tham khảo} theo chuẩn IEEE, và \textbf{Phụ lục} chứa mã nguồn các module chính cùng hướng dẫn cài đặt.

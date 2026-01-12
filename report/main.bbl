@@ -1,0 +1,150 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{clustabnet2024}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=8a6b0c8369d9d2aaeb49a6163c4f4124}{%
+           family={Polewczyk},
+           familyi={P\bibinitperiod},
+           given={Marek},
+           giveni={M\bibinitperiod}}}%
+        {{hash=9143392c3b2c6542d83c27bae85f1233}{%
+           family={Spinaci},
+           familyi={S\bibinitperiod},
+           given={Marco},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{ddcc919393542041bd6c600a45f2869e}
+      \strng{fullhash}{ddcc919393542041bd6c600a45f2869e}
+      \strng{fullhashraw}{ddcc919393542041bd6c600a45f2869e}
+      \strng{bibnamehash}{ddcc919393542041bd6c600a45f2869e}
+      \strng{authorbibnamehash}{ddcc919393542041bd6c600a45f2869e}
+      \strng{authornamehash}{ddcc919393542041bd6c600a45f2869e}
+      \strng{authorfullhash}{ddcc919393542041bd6c600a45f2869e}
+      \strng{authorfullhashraw}{ddcc919393542041bd6c600a45f2869e}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:2402.07502}
+      \field{title}{ClusterTabNet: Supervised clustering method for table detection and table structure recognition}
+      \field{year}{2024}
+    \endentry
+    \entry{pubtables1m}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{hash=68e5fe24b304d270a02883528e1def2a}{%
+           family={Smock},
+           familyi={S\bibinitperiod},
+           given={Brandon},
+           giveni={B\bibinitperiod}}}%
+        {{hash=0e358c3db82f6d95f1da6cfbff44e937}{%
+           family={Pesala},
+           familyi={P\bibinitperiod},
+           given={Rohith},
+           giveni={R\bibinitperiod}}}%
+        {{hash=98d1039e360c114877200876fb6ec1d9}{%
+           family={Abraham},
+           familyi={A\bibinitperiod},
+           given={Robin},
+           giveni={R\bibinitperiod}}}%
+      }
+      \strng{namehash}{67bed939377bfc7b358d388da2849d09}
+      \strng{fullhash}{eccfa5218377676f4de7ade7b21ad1cb}
+      \strng{fullhashraw}{eccfa5218377676f4de7ade7b21ad1cb}
+      \strng{bibnamehash}{eccfa5218377676f4de7ade7b21ad1cb}
+      \strng{authorbibnamehash}{eccfa5218377676f4de7ade7b21ad1cb}
+      \strng{authornamehash}{67bed939377bfc7b358d388da2849d09}
+      \strng{authorfullhash}{eccfa5218377676f4de7ade7b21ad1cb}
+      \strng{authorfullhashraw}{eccfa5218377676f4de7ade7b21ad1cb}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}
+      \field{title}{PubTables-1M: Towards comprehensive table extraction from unstructured documents}
+      \field{year}{2022}
+      \field{pages}{4634\bibrangedash 4642}
+      \range{pages}{9}
+    \endentry
+    \entry{vaswani2017attention}{article}{}{}
+      \name{author}{8}{}{%
+        {{hash=7f28e84700536646dd6620a0db07ad09}{%
+           family={Vaswani},
+           familyi={V\bibinitperiod},
+           given={Ashish},
+           giveni={A\bibinitperiod}}}%
+        {{hash=62efade83d70f0323fe248755e6c90c5}{%
+           family={Shazeer},
+           familyi={S\bibinitperiod},
+           given={Noam},
+           giveni={N\bibinitperiod}}}%
+        {{hash=06649ebab1ea5cac0250746a19764975}{%
+           family={Parmar},
+           familyi={P\bibinitperiod},
+           given={Niki},
+           giveni={N\bibinitperiod}}}%
+        {{hash=831027ee0ebf22375e2a86afc1881909}{%
+           family={Uszkoreit},
+           familyi={U\bibinitperiod},
+           given={Jakob},
+           giveni={J\bibinitperiod}}}%
+        {{hash=2fd2982e30ebcec93ec1cf76e0d797fd}{%
+           family={Jones},
+           familyi={J\bibinitperiod},
+           given={Llion},
+           giveni={L\bibinitperiod}}}%
+        {{hash=27b07e4eacbf4ef7a1438e3badb7dd8d}{%
+           family={Gomez},
+           familyi={G\bibinitperiod},
+           given={Aidan\bibnamedelima N},
+           giveni={A\bibinitperiod\bibinitdelim N\bibinitperiod}}}%
+        {{hash=540fcd72e1fa4bbed46604f4e6cff817}{%
+           family={Kaiser},
+           familyi={K\bibinitperiod},
+           given={{Ł}ukasz},
+           giveni={Ł\bibinitperiod}}}%
+        {{hash=95595a0fefb86187cbc36e551017d332}{%
+           family={Polosukhin},
+           familyi={P\bibinitperiod},
+           given={Illia},
+           giveni={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{ee273ab30cfb889666f8c4d806eb9ce7}
+      \strng{fullhash}{cb26e47f6b8133865271fc8483132297}
+      \strng{fullhashraw}{cb26e47f6b8133865271fc8483132297}
+      \strng{bibnamehash}{ee273ab30cfb889666f8c4d806eb9ce7}
+      \strng{authorbibnamehash}{ee273ab30cfb889666f8c4d806eb9ce7}
+      \strng{authornamehash}{ee273ab30cfb889666f8c4d806eb9ce7}
+      \strng{authorfullhash}{cb26e47f6b8133865271fc8483132297}
+      \strng{authorfullhashraw}{cb26e47f6b8133865271fc8483132297}
+      \field{sortinit}{V}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Advances in Neural Information Processing Systems}
+      \field{title}{Attention Is All You Need}
+      \field{volume}{30}
+      \field{year}{2017}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

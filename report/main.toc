@@ -1,0 +1,118 @@
+\babel@toc {vietnamese}{}\relax 
+\contentsline {chapter}{Tóm Tắt}{i}{chapter*.1}%
+\contentsline {chapter}{\numberline {1}Giới Thiệu}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Đặt Vấn Đề và Tính Cấp Thiết}{1}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Bối cảnh và tầm quan trọng}{1}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Các thách thức trong nhận dạng cấu trúc bảng}{1}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}Tính ứng dụng thực tiễn}{2}{subsection.1.1.3}%
+\contentsline {subsection}{\numberline {1.1.4}Hạn chế của các phương pháp truyền thống}{3}{subsection.1.1.4}%
+\contentsline {section}{\numberline {1.2}Mục Tiêu Đề Tài}{3}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Mục tiêu tổng quát}{3}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Mục tiêu cụ thể}{4}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}Phạm vi và giới hạn}{5}{subsection.1.2.3}%
+\contentsline {section}{\numberline {1.3}Cấu Trúc Báo Cáo}{5}{section.1.3}%
+\contentsline {chapter}{\numberline {2}Kiến Thức Nền Tảng}{7}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Cơ Chế Attention}{7}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Bối cảnh và động lực}{7}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Giới thiệu về Attention}{8}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}Scaled Dot-Product Attention}{8}{subsection.2.1.3}%
+\contentsline {subsection}{\numberline {2.1.4}Ví dụ minh họa}{9}{subsection.2.1.4}%
+\contentsline {section}{\numberline {2.2}Self-Attention}{9}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Định nghĩa và đặc điểm}{9}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Ý nghĩa của việc tách riêng Q, K, V}{10}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Ý nghĩa trong nhận dạng cấu trúc bảng}{10}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Độ phức tạp tính toán}{11}{subsection.2.2.4}%
+\contentsline {section}{\numberline {2.3}Multi-Head Attention}{11}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Động lực và ý tưởng}{11}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Công thức Multi-Head Attention}{12}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Giải thích trực quan}{12}{subsection.2.3.3}%
+\contentsline {subsection}{\numberline {2.3.4}Ưu điểm của Multi-Head Attention}{12}{subsection.2.3.4}%
+\contentsline {subsection}{\numberline {2.3.5}Trong ClusTabNet}{13}{subsection.2.3.5}%
+\contentsline {section}{\numberline {2.4}Kiến Trúc Transformer Encoder}{13}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Tổng quan và lịch sử}{13}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Cấu trúc một Encoder Layer}{13}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Residual Connections}{14}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Layer Normalization}{14}{subsection.2.4.4}%
+\contentsline {subsection}{\numberline {2.4.5}Feed-Forward Network}{14}{subsection.2.4.5}%
+\contentsline {subsection}{\numberline {2.4.6}Stacking Encoder Layers}{15}{subsection.2.4.6}%
+\contentsline {section}{\numberline {2.5}Position Embedding}{15}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Vấn đề: Transformer không có khái niệm thứ tự}{15}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Sinusoidal Positional Encoding}{16}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Learned Position Embedding}{16}{subsection.2.5.3}%
+\contentsline {subsection}{\numberline {2.5.4}Bounding Box Embedding trong ClusTabNet}{16}{subsection.2.5.4}%
+\contentsline {section}{\numberline {2.6}Hàm Mất Mát (Loss Functions)}{17}{section.2.6}%
+\contentsline {subsection}{\numberline {2.6.1}Binary Cross-Entropy Loss}{17}{subsection.2.6.1}%
+\contentsline {subsection}{\numberline {2.6.2}Vấn đề Class Imbalance}{17}{subsection.2.6.2}%
+\contentsline {subsection}{\numberline {2.6.3}Weighted Loss cho Class Imbalance}{17}{subsection.2.6.3}%
+\contentsline {subsection}{\numberline {2.6.4}Multi-task Loss}{18}{subsection.2.6.4}%
+\contentsline {section}{\numberline {2.7}Mô hình ClusterTabNet}{18}{section.2.7}%
+\contentsline {subsection}{\numberline {2.7.1}Ý tưởng cốt lõi}{18}{subsection.2.7.1}%
+\contentsline {subsection}{\numberline {2.7.2}So sánh với các phương pháp khác}{19}{subsection.2.7.2}%
+\contentsline {subsection}{\numberline {2.7.3}Kiến trúc tổng quát}{19}{subsection.2.7.3}%
+\contentsline {subsection}{\numberline {2.7.4}Ưu điểm của ClusterTabNet}{19}{subsection.2.7.4}%
+\contentsline {subsection}{\numberline {2.7.5}Hạn chế và thách thức}{20}{subsection.2.7.5}%
+\contentsline {chapter}{\numberline {3}Phân Tích Yêu Cầu và Thiết Kế}{21}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Phân Tích Yêu Cầu Bài Toán}{21}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Mô tả bài toán}{21}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Yêu cầu chức năng}{22}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Yêu cầu phi chức năng}{23}{subsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.1.4}Các giả định và ràng buộc}{23}{subsection.3.1.4}%
+\contentsline {section}{\numberline {3.2}Thiết Kế Tổng Quan Kiến Trúc}{23}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Kiến trúc ClusTabNet}{23}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Luồng xử lý dữ liệu (Data Flow)}{24}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Ưu điểm của thiết kế}{25}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}Thiết Kế Chi Tiết Các Thành Phần}{25}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}ClusTabEmbedding Module}{25}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Custom Transformer Encoder}{28}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Clustering Heads}{32}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}Thiết Kế Pipeline Xử Lý Dữ Liệu}{34}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Cấu trúc dữ liệu đầu vào}{34}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Thuật toán sinh Adjacency Labels}{35}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Vocabulary Building}{35}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Masking và Padding}{36}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Sơ Đồ Lớp và Module}{37}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Cấu trúc các class chính}{37}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Dependency giữa các module}{37}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Tổng số Parameters}{38}{subsection.3.5.3}%
+\contentsline {chapter}{\numberline {4}Thực Hiện và Kiểm Thử}{39}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Môi Trường và Công Cụ Phát Triển}{39}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Phần cứng}{39}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Phần mềm và thư viện}{40}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Cấu trúc thư mục dự án}{40}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}Pipeline Huấn Luyện}{41}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Tổng quan pipeline}{41}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Cấu hình huấn luyện}{42}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Thiết kế Loss Function}{43}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Quá trình huấn luyện}{45}{subsection.4.2.4}%
+\contentsline {subsection}{\numberline {4.2.5}Chi tiết triển khai một số điểm quan trọng}{46}{subsection.4.2.5}%
+\contentsline {section}{\numberline {4.3}Cơ Chế Đánh Giá}{46}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Metrics đánh giá}{46}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Quy trình đánh giá}{47}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Connected Components Post-processing}{48}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Kết Quả Thực Nghiệm}{49}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Dataset sử dụng}{49}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Kết quả huấn luyện}{50}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Kết quả trên tập test - Object-Level}{50}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}Phân tích kết quả theo từng task}{51}{subsection.4.4.4}%
+\contentsline {subsection}{\numberline {4.4.5}So sánh với paper gốc (COCO-style Metrics)}{52}{subsection.4.4.5}%
+\contentsline {subsection}{\numberline {4.4.6}Kết quả trực quan hóa}{54}{subsection.4.4.6}%
+\contentsline {section}{\numberline {4.5}Phân Tích và Thảo Luận}{54}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Điểm mạnh của mô hình}{54}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Điểm yếu và hạn chế}{55}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}Các thách thức gặp phải trong quá trình triển khai}{55}{subsection.4.5.3}%
+\contentsline {subsection}{\numberline {4.5.4}Giải pháp đã áp dụng}{55}{subsection.4.5.4}%
+\contentsline {subsection}{\numberline {4.5.5}Lessons Learned}{56}{subsection.4.5.5}%
+\contentsline {chapter}{\numberline {5}Kết Luận}{57}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Tổng Kết Kết Quả Đạt Được}{57}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Đánh giá theo mục tiêu}{58}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Những đóng góp chính}{58}{subsection.5.1.2}%
+\contentsline {subsection}{\numberline {5.1.3}Kiến thức và kỹ năng thu được}{59}{subsection.5.1.3}%
+\contentsline {section}{\numberline {5.2}Hạn Chế}{60}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Hạn chế về dữ liệu}{60}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Hạn chế về mô hình}{60}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Hạn chế về đánh giá}{60}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Hướng Phát Triển}{60}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Cải tiến mô hình}{61}{subsection.5.3.1}%
+\contentsline {section}{\numberline {5.4}Lời Kết}{62}{section.5.4}%
+\contentsline {chapter}{Tài Liệu Tham Khảo}{63}{chapter*.23}%
+\contentsfinish 

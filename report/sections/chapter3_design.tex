@@ -1,0 +1,816 @@
+% ============================================================================
+% CHAPTER 3: REQUIREMENT ANALYSIS AND DESIGN
+% PHÂN TÍCH YÊU CẦU VÀ THIẾT KẾ
+% ============================================================================
+\chapter{Phân Tích Yêu Cầu và Thiết Kế}
+\label{chap:design}
+
+Chương này trình bày chi tiết việc phân tích yêu cầu bài toán và thiết kế kiến trúc mô hình ClusTabNet, bao gồm các thành phần chính và cách chúng tương tác để giải quyết bài toán nhận dạng cấu trúc bảng. Mỗi quyết định thiết kế được giải thích với lý do cụ thể, giúp người đọc hiểu không chỉ "cái gì" mà còn "tại sao".
+
+% ============================================================================
+% 3.1 Phân tích yêu cầu bài toán
+% ============================================================================
+\section{Phân Tích Yêu Cầu Bài Toán}
+\label{sec:requirements}
+
+\subsection{Mô tả bài toán}
+
+Bài toán Table Structure Recognition (TSR) được định nghĩa chính thức như sau:
+
+\textbf{Input:} 
+\begin{itemize}
+    \item Hình ảnh bảng gốc (table image) - tùy chọn, không bắt buộc trong phiên bản hiện tại.
+    \item Kết quả OCR: Danh sách $n$ tokens (từ), mỗi token bao gồm:
+    \begin{itemize}
+        \item \texttt{text}: Nội dung văn bản của token.
+        \item \texttt{bbox}: Bounding box dạng $[x_{min}, y_{min}, x_{max}, y_{max}]$ xác định vị trí của token trong ảnh.
+    \end{itemize}
+\end{itemize}
+
+\textbf{Output:} Cấu trúc bảng được biểu diễn dưới dạng tập các ma trận kề $N \times N$:
+\begin{itemize}
+    \item $A_{row}$: Ma trận chỉ định các tokens thuộc cùng hàng.
+    \item $A_{col}$: Ma trận chỉ định các tokens thuộc cùng cột.
+    \item $A_{cell}$: Ma trận chỉ định các tokens thuộc cùng ô.
+    \item $A_{header}$: Ma trận chỉ định các tokens trong vùng header.
+    \item $A_{span}$: Ma trận chỉ định các tokens thuộc ô gộp (spanning cells).
+\end{itemize}
+
+Từ các ma trận kề, có thể áp dụng thuật toán Connected Components để trích xuất:
+\begin{itemize}
+    \item Danh sách các hàng, mỗi hàng chứa tập tokens tương ứng.
+    \item Danh sách các cột, mỗi cột chứa tập tokens tương ứng.
+    \item Danh sách các ô, mỗi ô là giao của hàng và cột.
+    \item Phân loại tokens thuộc header hay body.
+    \item Nhận diện các ô gộp span nhiều hàng/cột.
+\end{itemize}
+
+\subsection{Yêu cầu chức năng}
+
+Dựa trên phân tích bài toán, các yêu cầu chức năng được xác định như sau:
+
+\begin{table}[H]
+\centering
+\caption{Danh sách yêu cầu chức năng}
+\label{tab:functional_requirements}
+\begin{tabular}{|c|p{9cm}|c|}
+\hline
+\textbf{ID} & \textbf{Mô tả} & \textbf{Độ ưu tiên} \\
+\hline
+FR01 & Nhận dữ liệu OCR (token text và bounding box) làm đầu vào & Cao \\
+\hline
+FR02 & Dự đoán mối quan hệ cùng hàng giữa các cặp tokens với xác suất $[0, 1]$ & Cao \\
+\hline
+FR03 & Dự đoán mối quan hệ cùng cột giữa các cặp tokens với xác suất $[0, 1]$ & Cao \\
+\hline
+FR04 & Dự đoán mối quan hệ cùng ô giữa các cặp tokens & Cao \\
+\hline
+FR05 & Nhận diện và phân loại tokens thuộc vùng header & Trung bình \\
+\hline
+FR06 & Nhận diện tokens thuộc ô gộp (spanning cells) & Trung bình \\
+\hline
+FR07 & Trực quan hóa kết quả dự đoán lên ảnh gốc với màu sắc phân biệt & Thấp \\
+\hline
+FR08 & Xuất kết quả dự đoán dưới dạng JSON hoặc structured format & Thấp \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Yêu cầu phi chức năng}
+
+\begin{table}[H]
+\centering
+\caption{Danh sách yêu cầu phi chức năng}
+\label{tab:nonfunctional_requirements}
+\begin{tabular}{|c|p{8cm}|c|}
+\hline
+\textbf{ID} & \textbf{Mô tả} & \textbf{Tiêu chí} \\
+\hline
+NFR01 & Mô hình phải xử lý được bảng với số lượng tokens biến thiên (1 đến max\_len) & max\_len = 512 \\
+\hline
+NFR02 & Thời gian inference đủ nhanh cho ứng dụng thực tế & $\leq$ 1 giây/bảng \\
+\hline
+NFR03 & Độ chính xác chấp nhận được trên tập test & F1 $\geq$ 0.60 \\
+\hline
+NFR04 & Mô hình xử lý được cả bảng có đường kẻ và không có đường kẻ & - \\
+\hline
+NFR05 & Sử dụng bộ nhớ GPU hợp lý để có thể chạy trên consumer GPU & $\leq$ 8GB VRAM \\
+\hline
+NFR06 & Code modular, dễ đọc và có thể mở rộng & - \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Các giả định và ràng buộc}
+
+\begin{itemize}
+    \item \textbf{Giả định về OCR:} Kết quả OCR được cung cấp sẵn và có chất lượng chấp nhận được (accuracy $\geq$ 90\%).
+    \item \textbf{Giả định về ngôn ngữ:} Chủ yếu là tiếng Anh, với domain là các bài báo khoa học.
+    \item \textbf{Ràng buộc về độ dài:} Số tokens tối đa trong một bảng là 512 do giới hạn bộ nhớ.
+    \item \textbf{Ràng buộc về tài nguyên:} Huấn luyện trên GPU với $\leq$ 16GB VRAM.
+\end{itemize}
+
+% ============================================================================
+% 3.2 Thiết kế tổng quan
+% ============================================================================
+\section{Thiết Kế Tổng Quan Kiến Trúc}
+\label{sec:architecture_overview}
+
+\subsection{Kiến trúc ClusTabNet}
+
+Mô hình ClusTabNet được thiết kế theo kiến trúc Encoder + Multiple Heads, gồm ba thành phần chính hoạt động tuần tự:
+
+\begin{enumerate}
+    \item \textbf{ClusTabEmbedding:} Mô-đun nhúng (embedding) có nhiệm vụ chuyển đổi thông tin raw (token ID và bounding box) thành vector biểu diễn dense trong không gian $d_{model}$ chiều. Đây là "cửa ngõ" để mô hình "hiểu" đầu vào.
+    
+    \item \textbf{Custom Transformer Encoder:} Backbone chính của mô hình, sử dụng cơ chế Multi-Head Self-Attention để cho phép mỗi token "nhìn thấy" và học mối quan hệ với tất cả các tokens khác. Qua nhiều layers, encoder tạo ra biểu diễn ngữ cảnh (contextualized representations) phong phú.
+    
+    \item \textbf{Clustering Heads:} Năm đầu ra độc lập, mỗi đầu ra dự đoán một ma trận kề $N \times N$ tương ứng với một loại mối quan hệ (row, column, cell, header, spanning). Các heads chia sẻ biểu diễn từ encoder nhưng có các parameters riêng.
+\end{enumerate}
+
+\subsection{Luồng xử lý dữ liệu (Data Flow)}
+
+Luồng xử lý dữ liệu từ đầu vào đến đầu ra được mô tả chi tiết như sau:
+
+\textbf{Bước 1 - Tiền xử lý:}
+\begin{itemize}
+    \item Tokenize: Chuyển text thành token ID sử dụng từ điển đã xây dựng.
+    \item Normalize bbox: Chuẩn hóa tọa độ về khoảng $[0, 1]$ theo kích thước ảnh.
+    \item Padding: Đệm các samples ngắn đến max\_len, tạo attention mask.
+\end{itemize}
+
+\textbf{Bước 2 - Embedding:}
+\begin{itemize}
+    \item Text Embedding: Token ID $\rightarrow$ Vector $d_{text}$ chiều.
+    \item Bbox Embedding: Tọa độ $[x_1, y_1, x_2, y_2]$ $\rightarrow$ Vector $d_{pos}$ chiều.
+    \item Fusion: Concatenate và project về $d_{model}$ chiều.
+    \item Output: Tensor $(B, N, d_{model})$ với $B$ là batch size, $N$ là sequence length.
+\end{itemize}
+
+\textbf{Bước 3 - Transformer Encoding:}
+\begin{itemize}
+    \item Input: Tensor $(B, N, d_{model})$ từ embedding.
+    \item Qua $L$ layers (mỗi layer có Self-Attention + FFN + Residual + LayerNorm).
+    \item Attention mask được áp dụng để ignore padding tokens.
+    \item Output: Tensor $(B, N, d_{model})$ với biểu diễn ngữ cảnh phong phú.
+\end{itemize}
+
+\textbf{Bước 4 - Prediction (Clustering Heads):}
+\begin{itemize}
+    \item Input: Tensor memory $(B, N, d_{model})$ từ encoder.
+    \item Mỗi head: Linear projection $\rightarrow$ Pairwise similarity $\rightarrow$ Sigmoid.
+    \item Output: 5 ma trận $(B, N, N)$ với giá trị $[0, 1]$.
+\end{itemize}
+
+\textbf{Bước 5 - Hậu xử lý (Inference time):}
+\begin{itemize}
+    \item Áp dụng threshold (thường $\tau = 0.5$) để chuyển thành ma trận nhị phân.
+    \item Chạy Connected Components để gom nhóm tokens.
+    \item Trích xuất structure: danh sách rows, columns, cells, headers.
+\end{itemize}
+
+\subsection{Ưu điểm của thiết kế}
+
+Thiết kế kiến trúc trên có một số ưu điểm đáng chú ý:
+
+\begin{itemize}
+    \item \textbf{Modularity:} Các thành phần độc lập, dễ thay thế hoặc cải tiến từng phần. Ví dụ: có thể thay Text Embedding bằng pre-trained embeddings mà không ảnh hưởng các phần khác.
+    
+    \item \textbf{Multi-task Learning:} Năm heads chia sẻ encoder, cho phép transfer learning giữa các tasks. Thông tin học được từ task row/column có thể giúp ích cho task cell.
+    
+    \item \textbf{End-to-end Differentiable:} Toàn bộ pipeline có thể train end-to-end bằng gradient descent.
+    
+    \item \textbf{Flexible Input Length:} Nhờ cơ chế Self-Attention, mô hình xử lý được chuỗi có độ dài bất kỳ (trong giới hạn max\_len).
+\end{itemize}
+
+% ============================================================================
+% 3.3 Thiết kế chi tiết các thành phần
+% ============================================================================
+\section{Thiết Kế Chi Tiết Các Thành Phần}
+\label{sec:detailed_design}
+
+\subsection{ClusTabEmbedding Module}
+
+Mô-đun Embedding là thành phần đầu tiên trong pipeline, có nhiệm vụ chuyển đổi thông tin "thô" thành biểu diễn vector có ý nghĩa. Thiết kế của mô-đun này cần cân nhắc kỹ vì nó ảnh hưởng trực tiếp đến khả năng học của mô hình.
+
+\subsubsection*{Text Embedding}
+
+Text Embedding sử dụng lookup table (Embedding layer) để chuyển token ID thành vector:
+
+\begin{equation}
+\label{eq:text_embed}
+\vect{e}_{text} = \text{Embedding}(\text{token\_id}) \in \mathbb{R}^{d_{text}}
+\end{equation}
+
+\textbf{Chi tiết triển khai:}
+\begin{itemize}
+    \item \texttt{vocab\_size}: Kích thước từ điển, được xây dựng từ training data.
+    \item \texttt{d\_text}: Kích thước vector embedding, chiếm 70\% của $d_{model}$.
+    \item  Token có ID = 0 (PAD) luôn được embed thành vector 0.
+    \item Các weights được khởi tạo random và học trong quá trình training.
+\end{itemize}
+
+\textbf{Lý do thiết kế:}
+\begin{itemize}
+    \item Sử dụng learnable embeddings thay vì pre-trained (như Word2Vec, GloVe) vì từ vựng trong bảng thường mang tính domain-specific (số, ký hiệu, từ viết tắt).
+    \item Tỷ lệ 70\% cho text embedding vì nội dung văn bản thường mang nhiều thông tin ngữ nghĩa quan trọng.
+    \item Cho phép mô hình tự học representations phù hợp với bài toán TSR.
+\end{itemize}
+
+\subsubsection*{Bounding Box Embedding}
+
+Khác với text, bounding box là dữ liệu liên tục (continuous) nên không thể dùng lookup table. Thay vào đó, sử dụng MLP (Multi-Layer Perceptron):
+
+\begin{equation}
+\label{eq:bbox_embed_design}
+\vect{e}_{bbox} = \text{MLP}([x_{min}, y_{min}, x_{max}, y_{max}]) \in \mathbb{R}^{d_{pos}}
+\end{equation}
+
+\textbf{Chi tiết triển khai:}
+\begin{lstlisting}[caption={Bbox Embedding Architecture}, label={lst:bbox_arch}, language=Python]
+self.box_embed = nn.Sequential(
+    nn.Linear(4, d_pos),      # 4 -> d_pos
+    nn.ReLU(),                  # Non-linearity
+    nn.Linear(d_pos, d_pos)     # d_pos -> d_pos
+)
+\end{lstlisting}
+
+\textbf{Lý do sử dụng 4 tọa độ:} Thiết kế này mã hóa đầy đủ thông tin hình học của mỗi token thông qua 4 tọa độ bounding box:
+\begin{itemize}
+    \item Cặp $(x_{min}, y_{min})$ xác định vị trí góc trên trái của token trong ảnh.
+    \item Cặp $(x_{max}, y_{max})$ cung cấp thông tin về kích thước và biên phải dưới.
+    \item Việc sử dụng cả 4 tọa độ cho phép mô hình học được cả vị trí lẫn kích thước của token -- thông tin quan trọng vì header thường có chiều cao lớn hơn, số tiền thường mỏng hơn text dạng chữ.
+\end{itemize}
+
+\textbf{Chuẩn hóa bbox về $[0, 1]$:} Do các ảnh trong dataset có kích thước khác nhau (800x600, 1920x1080, ...), việc chuẩn hóa tọa độ bbox về khoảng $[0, 1]$ là cần thiết. Điều này giúp mô hình học được các patterns vị trí không phụ thuộc vào resolution ảnh gốc. Công thức chuẩn hóa: $x_{norm} = x_{raw} / image\_width$, tương tự cho $y$.
+
+\textbf{Kiến trúc MLP 2 layers:} MLP được thiết kế với 2 layers Linear kết hợp activation ReLU ở giữa nhằm:
+\begin{itemize}
+    \item Layer đầu tiên với ReLU cho phép học các transformations phi tuyến từ tọa độ thô -- ví dụ, mô hình có thể học rằng tokens có $y$ trong khoảng [0.1, 0.15] thường là header, đây là quan hệ phi tuyến không thể biểu diễn bằng một Linear layer đơn lẻ.
+    \item Layer thứ hai tinh chỉnh biểu diễn đã qua phi tuyến hóa, tạo ra embedding cuối cùng phù hợp cho việc kết hợp với text embedding.
+\end{itemize}
+
+\subsubsection*{Fusion Strategy - Kết hợp Embedding}
+
+Sau khi có text embedding và bbox embedding, cần kết hợp chúng thành một biểu diễn duy nhất. Có nhiều chiến lược fusion:
+
+\textbf{1. Addition (Cộng):}
+\begin{equation}
+\vect{e}_{final} = \vect{e}_{text} + \vect{e}_{bbox}
+\end{equation}
+Yêu cầu: $d_{text} = d_{bbox} = d_{model}$.
+
+\textbf{2. Concatenation (Nối):}
+\begin{equation}
+\vect{e}_{final} = \text{Project}([\vect{e}_{text}; \vect{e}_{bbox}])
+\end{equation}
+Trong đó $[\cdot;\cdot]$ là concatenation và Project là linear layer.
+
+\textbf{3. Attention-based Fusion:}
+Sử dụng cross-attention giữa text và position, phức tạp hơn nhưng có thể học dynamic weights.
+
+\textbf{Lựa chọn của ClusTabNet:} Bài làm chọn \textbf{Concatenation} vì:
+\begin{itemize}
+    \item Đơn giản và hiệu quả.
+    \item Cho phép text và bbox có kích thước khác nhau $(d_{text} \neq d_{bbox})$.
+    \item Không buộc hai representations phải ở trong cùng không gian semantic.
+\end{itemize}
+
+Công thức triển khai:
+\begin{equation}
+\label{eq:combined_embed}
+\vect{e}_{final} = \text{LayerNorm}(\text{Linear}([\vect{e}_{text}; \vect{e}_{bbox}]))
+\end{equation}
+
+\textbf{Tỷ lệ phân chia:}
+\begin{itemize}
+    \item $d_{text} = 0.7 \times d_{model}$ (70\% cho text)
+    \item $d_{pos} = 0.3 \times d_{model}$ (30\% cho position)
+\end{itemize}
+
+Tỷ lệ này được chọn dựa trên reasoning: nội dung văn bản thường mang nhiều thông tin ngữ nghĩa hơn (phân biệt "Total" vs "Revenue"), trong khi vị trí quan trọng nhưng đóng vai trò hỗ trợ.
+
+\subsubsection*{Layer Normalization sau Fusion}
+
+Layer Normalization sau fusion rất quan trọng:
+\begin{itemize}
+    \item Cân bằng scale giữa text embedding và bbox embedding.
+    \item Ổn định gradient flow trong quá trình training.
+    \item Giúp Transformer layers phía sau làm việc với input có distribution ổn định.
+\end{itemize}
+
+\subsection{Custom Transformer Encoder}
+
+Thay vì sử dụng \texttt{nn.TransformerEncoder} của PyTorch, bài làm triển khai Transformer Encoder từ đầu để hiểu sâu hơn về kiến trúc và có thể tùy chỉnh khi cần.
+
+\subsubsection*{Cấu hình}
+
+\begin{table}[H]
+\centering
+\caption{Cấu hình Transformer Encoder}
+\label{tab:encoder_config}
+\begin{tabular}{|l|c|p{6cm}|}
+\hline
+\textbf{Tham số} & \textbf{Giá trị} & \textbf{Giải thích} \\
+\hline
+$d_{model}$ & 640 & Kích thước vector biểu diễn. Đủ lớn để biểu diễn phong phú, đủ nhỏ để hiệu quả tính toán. \\
+\hline
+$n_{heads}$ & 4 & Số attention heads. Với $d_{model}=640$, mỗi head có $d_k=160$. \\
+\hline
+$n_{layers}$ & 3 & Số lớp encoder. Trade-off giữa depth và computation. \\
+\hline
+$d_{ff}$ & 2560 & Hidden size của FFN, bằng $4 \times d_{model}$ (expansion ratio chuẩn). \\
+\hline
+$dropout$ & 0.1 & Tỷ lệ dropout để regularization. \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Lý do chọn các giá trị:}
+\begin{itemize}
+    \item \textbf{$d_{model} = 640$}: Lớn hơn cấu hình cơ bản để tăng khả năng biểu diễn phong phú cho bài toán TSR, đồng thời vẫn nhỏ hơn BERT (768) để đảm bảo hiệu quả tính toán.
+    
+    \item \textbf{$n_{heads} = 4$}: Đủ để học đa dạng patterns (vị trí, ngữ nghĩa, cấu trúc), trong khi mỗi head vẫn có đủ chiều ($d_k = 160$) để biểu diễn.
+    
+    \item \textbf{$n_{layers} = 3$}: Theo paper ClusTabNet gốc, 3 layers đủ để đạt performance tốt. Nhiều layers hơn không cải thiện đáng kể nhưng tăng chi phí.
+    
+    \item \textbf{$d_{ff} = 4 \times d_{model}$}: Follow quy ước từ Transformer gốc. FFN cần hidden size lớn hơn $d_{model}$ để có đủ capacity.
+\end{itemize}
+
+\subsubsection*{Multi-Head Self-Attention Implementation}
+
+Triển khai Multi-Head Attention được chia thành các bước rõ ràng:
+
+\begin{lstlisting}[caption={Multi-Head Attention Implementation}, label={lst:mha}]
+def multi_head_attention(x, mask=None):
+    batch, seq_len, d_model = x.shape
+    
+    # Step 1: Linear Projections cho Q, K, V
+    Q = self.w_q(x)  # (batch, seq_len, d_model)
+    K = self.w_k(x)
+    V = self.w_v(x)
+    
+    # Step 2: Reshape to (batch, n_heads, seq_len, d_k)
+    Q = Q.view(batch, seq_len, n_heads, d_k).transpose(1, 2)
+    K = K.view(batch, seq_len, n_heads, d_k).transpose(1, 2)
+    V = V.view(batch, seq_len, n_heads, d_k).transpose(1, 2)
+    
+    # Step 3: Scaled Dot-Product Attention
+    scores = (Q @ K.transpose(-2, -1)) / sqrt(d_k)  # (B, h, L, L)
+    
+    # Step 4: Apply Mask (che padding tokens)
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, -inf)
+    
+    # Step 5: Softmax + Dropout
+    attn_weights = softmax(scores, dim=-1)
+    attn_weights = dropout(attn_weights)
+    
+    # Step 6: Weighted sum of Values
+    out = attn_weights @ V  # (B, h, L, d_k)
+    
+    # Step 7: Concatenate Heads and Project
+    out = out.transpose(1, 2).reshape(batch, seq_len, d_model)
+    return self.w_o(out)
+\end{lstlisting}
+
+\textbf{Giải thích attention mask:}
+\begin{itemize}
+    \item Mask có shape $(B, 1, 1, L)$ hoặc $(B, 1, L, L)$.
+    \item Giá trị $1$ cho tokens thật, $0$ cho padding.
+    \item \texttt{masked\_fill(mask == 0, -inf)}: Đặt scores của padding thành $-\infty$.
+    \item Sau softmax, những vị trí này có weight $\approx 0$, không đóng góp vào output.
+\end{itemize}
+
+\subsubsection*{Encoder Layer và Pre-LN Configuration}
+
+Mỗi Encoder Layer là một đơn vị xử lý hoàn chỉnh, bao gồm hai sub-layer chính: Self-Attention và Feed-Forward Network. Thiết kế này tuân theo kiến trúc Transformer gốc với cơ chế Residual Connection và Layer Normalization.
+
+\textbf{Hai biến thể Layer Normalization:}
+\begin{itemize}
+    \item \textbf{Post-LN (Original):} $\text{LN}(x + \text{SubLayer}(x))$ -- Normalize sau khi cộng residual.
+    \item \textbf{Pre-LN (Modern):} $x + \text{SubLayer}(\text{LN}(x))$ -- Normalize trước khi đi vào sub-layer.
+\end{itemize}
+
+Bài làm sử dụng \textbf{Post-LN} theo paper gốc. Pre-LN được cho là ổn định hơn với deep networks (nhiều layers), nhưng với 3 layers trong ClusTabNet, Post-LN hoạt động tốt và giữ tính nhất quán với thiết kế Transformer chuẩn.
+
+\textbf{Cấu trúc EncoderLayer:}
+
+\begin{lstlisting}[caption={EncoderLayer Implementation}, label={lst:encoder_layer}]
+class EncoderLayer(nn.Module):
+    def __init__(self, d_model, n_head, d_ff, dropout=0.1):
+        super().__init__()
+        
+        # Sub-layer 1: Multi-Head Self-Attention
+        self.self_attn = MultiHeadAttention(d_model, n_head, dropout)
+        
+        # Sub-layer 2: Position-wise Feed-Forward Network
+        self.ffn = PositionwiseFeedForward(d_model, d_ff, dropout)
+        
+        # Layer Normalization cho moi sub-layer
+        self.norm1 = nn.LayerNorm(d_model)  # Sau Attention
+        self.norm2 = nn.LayerNorm(d_model)  # Sau FFN
+        
+        # Dropout cho regularization
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+    def forward(self, x, mask=None):
+        # --- Sub-layer 1: Self Attention + Add & Norm ---
+        attn_output = self.self_attn(x, mask)
+        x = self.norm1(x + self.dropout1(attn_output))
+        
+        # --- Sub-layer 2: FFN + Add & Norm ---
+        ffn_output = self.ffn(x)
+        x = self.norm2(x + self.dropout2(ffn_output))
+        
+        return x
+\end{lstlisting}
+
+\textbf{Giải thích ý nghĩa từng thành phần trong EncoderLayer:}
+
+\begin{itemize}
+    \item \texttt{self\_attn} (MultiHeadAttention): Cho phép mỗi token ``nhìn thấy'' và tính toán mức độ liên quan với tất cả các tokens khác trong sequence. Đây là cơ chế cốt lõi giúp mô hình học được quan hệ giữa các tokens bất kể khoảng cách.
+    
+    \item \texttt{ffn} (PositionwiseFeedForward): Mạng feed-forward áp dụng độc lập cho từng vị trí (token). Giúp mô hình học các transformations phi tuyến phức tạp hơn, bổ sung khả năng biểu diễn mà attention không thể capture.
+    
+    \item \texttt{norm1}, \texttt{norm2} (LayerNorm): Chuẩn hóa phân phối của activations, giúp ổn định quá trình training và cho phép sử dụng learning rate cao hơn. LayerNorm normalize theo chiều feature (d\_model) thay vì batch.
+    
+    \item \texttt{dropout1}, \texttt{dropout2}: Regularization bằng cách ngẫu nhiên ``tắt'' một số neurons trong quá trình training, giúp giảm overfitting.
+    
+    \item \textbf{Residual Connection} ($x + \text{SubLayer}(x)$): Cho phép gradient flow trực tiếp qua các layers, giải quyết vấn đề vanishing gradient trong deep networks. Mỗi layer học ``delta'' bổ sung thay vì phải học toàn bộ transformation.
+\end{itemize}
+
+\subsubsection*{PositionwiseFeedForward Network}
+
+FFN là thành phần quan trọng thứ hai trong mỗi Encoder Layer, có nhiệm vụ bổ sung khả năng biểu diễn phi tuyến sau bước attention.
+
+\begin{lstlisting}[caption={PositionwiseFeedForward Implementation}, label={lst:ffn}]
+class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super().__init__()
+        # Layer 1: Expand dimension d_model -> d_ff
+        self.linear1 = nn.Linear(d_model, d_ff)
+        
+        # Layer 2: Contract dimension d_ff -> d_model
+        self.linear2 = nn.Linear(d_ff, d_model)
+        
+        self.dropout = nn.Dropout(dropout)
+        
+        # GELU activation (smooth, non-monotonic)
+        self.activation = nn.GELU()
+
+    def forward(self, x):
+        # x: (Batch, Seq_Len, d_model)
+        # Step 1: Expand + Activate
+        hidden = self.activation(self.linear1(x))
+        # Step 2: Dropout + Contract
+        return self.linear2(self.dropout(hidden))
+\end{lstlisting}
+
+\textbf{Giải thích ý nghĩa từng lớp trong FFN:}
+
+\begin{itemize}
+    \item \texttt{linear1} (Expansion Layer): Mở rộng vector từ $d_{model}$ chiều lên $d_{ff}$ chiều (với $d_{ff} = 4 \times d_{model} = 2560$). Việc mở rộng này tạo ``không gian làm việc'' rộng hơn để học các patterns phức tạp.
+    
+    \item \texttt{activation} (GELU): Gaussian Error Linear Unit là hàm kích hoạt phi tuyến, smooth hơn ReLU. GELU được chọn vì:
+    \begin{itemize}
+        \item Không có điểm ``chết'' như ReLU (gradient = 0 khi input < 0).
+        \item Hiệu quả tốt hơn trong các mô hình Transformer/BERT.
+        \item Công thức: $\text{GELU}(x) = x \cdot \Phi(x)$ với $\Phi$ là CDF của phân phối chuẩn.
+    \end{itemize}
+    
+    \item \texttt{dropout}: Áp dụng sau activation để regularization, ngăn mô hình phụ thuộc quá nhiều vào một số neurons cụ thể.
+    
+    \item \texttt{linear2} (Contraction Layer): Thu nhỏ vector từ $d_{ff}$ chiều về lại $d_{model}$ chiều, đảm bảo output có kích thước phù hợp với residual connection và layers tiếp theo.
+\end{itemize}
+
+\textbf{Tại sao cần FFN sau Attention?}
+
+Attention chỉ thực hiện weighted sum của các values -- về bản chất là phép biến đổi tuyến tính. FFN bổ sung khả năng học các patterns phi tuyến thông qua:
+\begin{itemize}
+    \item Expansion ratio ($d_{ff}/d_{model} = 4$) tạo bottleneck architecture.
+    \item Non-linear activation cho phép học các decision boundaries phức tạp.
+    \item Position-wise processing (áp dụng độc lập cho từng token) giúp mỗi token học transformation riêng dựa trên context đã aggregate từ attention.
+\end{itemize}
+
+
+\subsection{Clustering Heads}
+
+Clustering Heads là thành phần cuối cùng, có nhiệm vụ chuyển đổi biểu diễn từ encoder thành ma trận kề dự đoán.
+
+\subsubsection*{Pairwise Similarity Computation}
+
+Ý tưởng chính: mỗi token được project thành hai vectors - Query (Q) và Key (K). Sau đó tính similarity giữa tất cả pairs:
+
+\begin{equation}
+\label{eq:clustering_head}
+\vect{h} = \text{Linear}(\vect{x}_{encoder}) \in \mathbb{R}^{d_{model}}
+\end{equation}
+
+\begin{equation}
+\label{eq:adjacency_pred}
+A_{ij} = \sigma\left(\frac{\vect{q}_i \cdot \vect{k}_j}{\sqrt{d_k}}\right)
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $\vect{h}$ được chia thành 2 phần: $\vect{q}$ (query) và $\vect{k}$ (key).
+    \item Dot product $\vect{q}_i \cdot \vect{k}_j$ đo similarity giữa token $i$ và $j$.
+    \item Scaling bởi $\sqrt{d_k}$ để giữ variance ổn định.
+    \item Sigmoid $\sigma$ chuyển thành xác suất $[0, 1]$.
+\end{itemize}
+
+\textbf{Triển khai:}
+\begin{lstlisting}[caption={Clustering Head Implementation}, label={lst:cluster_head}]
+class ClusteringLinearHead(nn.Module):
+    def __init__(self, d_model):
+        super().__init__()
+        self.linear = nn.Linear(d_model, d_model)
+        self.d_k = d_model // 2
+        self.scale = 1.0 / math.sqrt(self.d_k)
+
+    def forward(self, x):
+        # x: (Batch, Seq, d_model)
+        projected = self.linear(x)
+        
+        # Split into Q and K
+        q, k = projected.chunk(2, dim=-1)  # Each is (B, L, d_k)
+        
+        # Pairwise similarity: (B, L, d_k) @ (B, d_k, L) -> (B, L, L)
+        adj_logits = torch.bmm(q, k.transpose(1, 2)) * self.scale
+        
+        # Convert to probability
+        adj_probs = torch.sigmoid(adj_logits)
+        
+        return adj_probs
+\end{lstlisting}
+
+\subsubsection*{Năm Clustering Heads}
+
+Mỗi head có cấu trúc giống nhau nhưng parameters riêng, được train để học một loại quan hệ cụ thể:
+
+\begin{enumerate}
+    \item \textbf{SameRowHead:} 
+    \begin{itemize}
+        \item Dự đoán: Cặp tokens $(i, j)$ có cùng hàng không?
+        \item Pattern học: Tokens có $y_{center}$ tương tự thường cùng hàng.
+        \item Thách thức: Phân biệt 2 hàng liền kề có khoảng cách $y$ nhỏ.
+    \end{itemize}
+    
+    \item \textbf{SameColHead:}
+    \begin{itemize}
+        \item Dự đoán: Cặp tokens $(i, j)$ có cùng cột không?
+        \item Pattern học: Tokens có $x_{center}$ tương tự và align theo chiều dọc.
+        \item Thách thức: Cột với text có độ dài khác nhau (số vs text dài).
+    \end{itemize}
+    
+    \item \textbf{SameCellHead:}
+    \begin{itemize}
+        \item Dự đoán: Cặp tokens $(i, j)$ thuộc cùng một ô không?
+        \item Logic: Là giao của SameRow và SameCol.
+        \item Có thể learn directly hoặc compute: $A_{cell} = A_{row} \odot A_{col}$.
+    \end{itemize}
+    
+    \item \textbf{HeaderHead:}
+    \begin{itemize}
+        \item Dự đoán: Cặp tokens $(i, j)$ đều ở vùng header không?
+        \item Pattern học: Tokens ở dòng đầu, có thể có visual features đặc biệt (bold).
+        \item Khác biệt: Đây là classification theo vùng thay vì pairwise relationship.
+    \end{itemize}
+    
+    \item \textbf{SpanningHead (Extract Cell):}
+    \begin{itemize}
+        \item Dự đoán: Token $i$ có thuộc ô gộp không?
+        \item Thách thức nhất: Ô gộp phá vỡ grid structure thông thường.
+        \item Pattern: Tokens có bounding box rộng bất thường, centroid không align với grid.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Lý do thiết kế Heads riêng biệt}
+
+\textbf{Tại sao không dùng một head duy nhất với multi-class output?}
+
+\begin{itemize}
+    \item Các quan hệ không mutually exclusive: một cặp có thể vừa cùng row vừa cùng cell.
+    \item Cho phép học các patterns đặc thù cho từng task.
+    \item Độc lập về loss weights: có thể điều chỉnh importance của từng task.
+\end{itemize}
+
+% ============================================================================
+% 3.4 Thiết kế xử lý dữ liệu
+% ============================================================================
+\section{Thiết Kế Pipeline Xử Lý Dữ Liệu}
+\label{sec:data_pipeline}
+
+\subsection{Cấu trúc dữ liệu đầu vào}
+
+Dữ liệu từ PubTables-1M bao gồm hai loại file cho mỗi sample:
+
+\textbf{1. Word-level JSON (OCR output):}
+\begin{lstlisting}[caption={Cấu trúc JSON dữ liệu OCR}, label={lst:json_structure}]
+[
+    {
+        "text": "Revenue",
+        "bbox": [100, 50, 200, 80]
+    },
+    {
+        "text": "2023",
+        "bbox": [250, 50, 320, 80]
+    },
+    ...
+]
+\end{lstlisting}
+
+\textbf{2. Ground Truth JSON (Table Structure):}
+\begin{lstlisting}[caption={Cấu trúc JSON dữ liệu Ground Truth}, label={lst:gt_structure}]
+{
+    "image_size": [800, 600],
+    "labels": [
+        {
+            "name": "row",
+            "bbox": [50, 45, 750, 85],
+            "extra_cells": []
+        },
+        {
+            "name": "column",
+            "bbox": [95, 40, 210, 590]
+        },
+        {
+            "name": "header",
+            "bbox": [50, 45, 750, 85]
+        }
+    ]
+}
+\end{lstlisting}
+
+\subsection{Thuật toán sinh Adjacency Labels}
+
+Một bước quan trọng là chuyển đổi ground truth (dạng bounding boxes của rows/columns) thành adjacency matrices (quan hệ pairwise giữa tokens).
+
+\textbf{Thuật toán Intersection over Area (IOA):}
+
+Để xác định token $i$ có thuộc structure $s$ (row/column/header) không, tính IOA:
+
+\begin{equation}
+\text{IOA}(token_i, structure_s) = \frac{\text{Area}(token_i \cap structure_s)}{\text{Area}(token_i)}
+\end{equation}
+
+Nếu $\text{IOA} > \tau$ (threshold, thường $\tau = 0.7$), token $i$ được coi là thuộc structure $s$.
+
+\begin{algorithm}
+\caption{Tạo Adjacency Matrix Labels}
+\label{alg:adjacency_labels}
+\begin{algorithmic}[1]
+\REQUIRE Danh sách tokens với bbox, danh sách structures với bbox và type
+\ENSURE Năm ma trận nhãn $A_{row}, A_{col}, A_{cell}, A_{header}, A_{span}$
+\STATE Khởi tạo các ma trận $N \times N$ với giá trị 0
+\FOR{each structure $s$ in ground truth}
+    \STATE Tính IOA giữa tất cả tokens và $s$
+    \STATE $belonging\_tokens \leftarrow$ tokens có $\text{IOA}(t, s) > \tau$
+    \FOR{each pair $(t_i, t_j)$ trong $belonging\_tokens$}
+        \IF{$s.type$ == "row"}
+            \STATE $A_{row}[i,j] \leftarrow 1$
+        \ELSIF{$s.type$ == "column"}
+            \STATE $A_{col}[i,j] \leftarrow 1$
+        \ELSIF{$s.type$ == "header"}
+            \STATE $A_{header}[i,j] \leftarrow 1$
+        \ENDIF
+    \ENDFOR
+    \IF{$s$ có extra\_cells (spanning)}
+        \STATE Xử lý spanning cell relationships vào $A_{span}$
+    \ENDIF
+\ENDFOR
+\STATE $A_{cell} \leftarrow A_{row} \odot A_{col}$ \COMMENT{Element-wise product}
+\RETURN $A_{row}, A_{col}, A_{cell}, A_{header}, A_{span}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Vocabulary Building}
+
+Từ điển được xây dựng từ training data theo các bước:
+
+\begin{lstlisting}[caption={Xây dựng từ điển}, label={lst:vocab}]
+def build_vocabulary(dataset):
+    word_set = set()
+    
+    # Collect all unique words
+    for sample in dataset:
+        for word in sample['words']:
+            word_set.add(word['text'])
+    
+    # Create mapping
+    vocab = {"<PAD>": 0, "<UNK>": 1}
+    for idx, word in enumerate(word_set):
+        vocab[word] = idx + 2
+    
+    return vocab
+\end{lstlisting}
+
+\textbf{Special tokens:}
+\begin{itemize}
+    \item \texttt{<PAD>} (ID=0): Padding token, embedding luôn là zeros.
+    \item \texttt{<UNK>} (ID=1): Unknown token cho words không có trong vocab.
+\end{itemize}
+
+\textbf{Lưu ý về vocabulary:}
+\begin{itemize}
+    \item Vocab trong domain table có nhiều số và ký hiệu đặc biệt.
+    \item Không lowercasing vì case có thể mang thông tin (header thường viết hoa).
+    \item Có thể rất lớn nếu include tất cả numbers. Một số approach: normalize numbers thành \texttt{<NUM>}.
+\end{itemize}
+
+\subsection{Masking và Padding}
+
+Do các bảng có số tokens khác nhau, cần padding để batch processing:
+
+\begin{itemize}
+    \item \textbf{Padding tokens:} Thêm tokens với ID=0 và bbox=[0,0,0,0] vào cuối sequence.
+    \item \textbf{Attention mask:} Tensor binary với 1 cho real tokens, 0 cho padding.
+    \item \textbf{Target masking:} Khi tính loss, chỉ tính trên vùng non-padding của adjacency matrix.
+\end{itemize}
+
+% ============================================================================
+% 3.5 Sơ đồ lớp và module
+% ============================================================================
+\section{Sơ Đồ Lớp và Module}
+\label{sec:class_diagram}
+
+\subsection{Cấu trúc các class chính}
+
+\begin{table}[H]
+\centering
+\caption{Mô tả các lớp chính}
+\label{tab:class_description}
+\begin{tabular}{|l|p{7cm}|c|}
+\hline
+\textbf{Lớp} & \textbf{Mô tả} & \textbf{Parameters} \\
+\hline
+\texttt{ClusTabEmbedding} & Mô-đun tạo embedding kết hợp text và position. Input: token IDs + bboxes. Output: tensor $(B, L, d_{model})$. & $\approx$ 1M \\
+\hline
+\texttt{MultiHeadAttention} & Triển khai Multi-Head Self-Attention với $h$ heads và linear projections. & $4 \times d_{model}^2$ \\
+\hline
+\texttt{PositionwiseFeedForward} & Feed-Forward Network với 2 layers và GELU activation. & $2 \times d_{model} \times d_{ff}$ \\
+\hline
+\texttt{EncoderLayer} & Một lớp của Transformer Encoder gồm Attention + FFN + LayerNorm. & $\approx$ 1.5M \\
+\hline
+\texttt{CustomTransformerEncoder} & Stack của $L$ EncoderLayers với final LayerNorm. & $L \times$ EncoderLayer \\
+\hline
+\texttt{ClusteringLinearHead} & Đầu ra phân cụm, tính pairwise similarity và sigmoid. & $d_{model}^2$ \\
+\hline
+\texttt{ClusTabNetPipeline} & Pipeline tổng hợp: Embedding + Encoder + 5 Heads. & $\approx$ 6M total \\
+\hline
+\texttt{PubTableDataset} & Dataset class kế thừa PyTorch Dataset, xử lý loading và preprocessing. & - \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Dependency giữa các module}
+
+Các module có mối quan hệ phụ thuộc như sau:
+
+\begin{lstlisting}[caption={Module Dependencies}]
+ClusTabNetPipeline
+  |-- ClusTabEmbedding
+  |     |-- nn.Embedding (text)
+  |     |-- nn.Sequential (bbox MLP)
+  |     |-- nn.Linear (fusion projection)
+  |     |-- nn.LayerNorm
+  |
+  |-- CustomTransformerEncoder
+  |     |-- EncoderLayer [x L layers]
+  |           |-- MultiHeadAttention
+  |           |     |-- nn.Linear (W_Q, W_K, W_V, W_O)
+  |           |-- PositionwiseFeedForward
+  |           |     |-- nn.Linear (fc1, fc2)
+  |           |-- nn.LayerNorm [x 2]
+  |
+  |-- ClusteringLinearHead [x 5 heads]
+        |-- nn.Linear
+\end{lstlisting}
+
+\subsection{Tổng số Parameters}
+
+Với cấu hình $d_{model}=640$, $n_{heads}=4$, $n_{layers}=3$, $d_{ff}=2560$, $vocab\_size \approx 100,000$:
+
+\begin{table}[H]
+\centering
+\caption{Phân bố Parameters}
+\begin{tabular}{|l|r|}
+\hline
+\textbf{Component} & \textbf{Parameters} \\
+\hline
+Text Embedding ($vocab \times d_{text}$) & $\approx$ 18M \\
+\hline
+Bbox Embedding (MLP) & $\approx$ 20K \\
+\hline
+Transformer Encoder (3 layers) & $\approx$ 2.1M \\
+\hline
+Clustering Heads (5 heads) & $\approx$ 330K \\
+\hline
+\textbf{Total} & $\approx$ \textbf{20.5M} \\
+\hline
+\end{tabular}
+\end{table}
+
+Lưu ý: Text Embedding chiếm phần lớn parameters. Nếu giảm vocab\_size hoặc dùng subword tokenization, total params sẽ giảm đáng kể.

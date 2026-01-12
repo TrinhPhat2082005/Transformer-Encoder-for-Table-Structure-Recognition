@@ -1,0 +1,56 @@
+% ============================================================================
+% ABSTRACT - TÓM TẮT
+% ============================================================================
+\chapter*{Tóm Tắt}
+\addcontentsline{toc}{chapter}{Tóm Tắt}
+
+\section*{Giới thiệu vấn đề}
+
+Nhận dạng cấu trúc bảng (Table Structure Recognition - TSR) là một bài toán quan trọng và đầy thách thức trong lĩnh vực xử lý tài liệu số và trích xuất thông tin tự động. Trong kỷ nguyên chuyển đổi số, nhu cầu tự động hóa việc trích xuất dữ liệu từ bảng biểu trong báo cáo tài chính, bài báo khoa học, hóa đơn và biểu mẫu hành chính ngày càng tăng cao. Tuy nhiên, sự đa dạng về cấu trúc bảng (có viền, không viền, ô gộp), chất lượng đầu vào không đồng nhất, và các trường hợp phức tạp như spanning cells khiến bài toán này vẫn còn nhiều thách thức.
+
+\section*{Phương pháp tiếp cận}
+
+Báo cáo này trình bày việc nghiên cứu, triển khai và đánh giá thuật toán ClusTabNet - một phương pháp tiên tiến coi bài toán TSR như một bài toán phân cụm có giám sát (supervised clustering). Thay vì sử dụng các phương pháp truyền thống dựa trên object detection hay semantic segmentation, ClusTabNet tiếp cận theo hướng "bottom-up": dự đoán mối quan hệ giữa từng cặp token (từ) trong bảng và sử dụng thuật toán Connected Components để gom nhóm thành các cấu trúc.
+
+Mô hình được xây dựng từ đầu (from scratch) bao gồm ba thành phần chính:
+\begin{itemize}
+    \item \textbf{Mô-đun ClusTabEmbedding:} Kết hợp thông tin ngữ nghĩa văn bản (text embedding) và thông tin vị trí không gian (bounding box embedding) theo tỷ lệ 70:30 thành một biểu diễn thống nhất.
+    
+    \item \textbf{Custom Transformer Encoder:} Kiến trúc 3 layers với Multi-Head Self-Attention (4 heads, d\_model = 640) để học biểu diễn ngữ cảnh phong phú, cho phép mỗi token "chú ý" đến tất cả các tokens khác.
+    
+    \item \textbf{Năm Clustering Heads độc lập:} Dự đoán đồng thời các mối quan hệ cùng hàng (same row), cùng cột (same column), cùng ô (same cell), vùng header, và ô gộp (spanning cell) dưới dạng ma trận kề xác suất.
+\end{itemize}
+
+\section*{Kết quả thực nghiệm}
+
+Kết quả thực nghiệm trên tập dữ liệu PubTables-1M phiên bản mini được đánh giá ở mức độ Object-Level. Bảng dưới đây trình bày kết quả trên \textbf{tập Test (637 samples)}:
+
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Task} & \textbf{F1-Score} \\
+\hline
+Header Recognition & 0.92 \\
+Spanning Cell Detection & 0.82 \\
+Same Cell & 0.63 \\
+Same Column & 0.53 \\
+Same Row & 0.42 \\
+\hline
+\textbf{Trung bình} & \textbf{0.66} \\
+\hline
+\end{tabular}
+\end{center}
+
+Mô hình đạt hiệu quả ấn tượng trong việc nhận diện vùng Header (F1 = 0.92) và ô gộp Spanning Cell (F1 = 0.82), cho thấy khả năng học các patterns ngữ nghĩa và cấu trúc đặc thù. Tuy nhiên, việc nhận diện chính xác ranh giới hàng (Same Row với F1 = 0.42) vẫn là thách thức cần được cải thiện.
+
+\section*{Ý nghĩa và đóng góp}
+
+Đồ án đã hoàn thành việc triển khai hoàn chỉnh pipeline từ xử lý dữ liệu, huấn luyện mô hình, đến đánh giá và trực quan hóa kết quả. Các đóng góp chính bao gồm: (1) triển khai Custom Transformer Encoder từ đầu giúp hiểu sâu cơ chế hoạt động, (2) thiết kế multi-task learning framework với weighted loss cho class imbalance, và (3) comprehensive evaluation với cả pixel-level và object-level metrics.
+
+Kết quả cho thấy tiềm năng của phương pháp tiếp cận dựa trên phân cụm trong việc giải quyết các bài toán cấu trúc bảng phức tạp, đặc biệt khi xử lý spanning cells mà không bị ràng buộc bởi giả định cấu trúc lưới cứng nhắc.
+
+\vspace{0.5cm}
+
+\textbf{GitHub Repository:} \url{https://shorturl.at/wOHKh}
+
+\clearpage

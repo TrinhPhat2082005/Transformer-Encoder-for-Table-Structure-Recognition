@@ -1,0 +1,24 @@
+\babel@toc {vietnamese}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces So sánh ClusterTabNet với các phương pháp TSR khác}}{19}{table.caption.5}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Danh sách yêu cầu chức năng}}{22}{table.caption.6}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Danh sách yêu cầu phi chức năng}}{23}{table.caption.7}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Cấu hình Transformer Encoder}}{28}{table.caption.8}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Mô tả các lớp chính}}{37}{table.caption.9}%
+\contentsline {table}{\numberline {3.5}{\ignorespaces Phân bố Parameters}}{38}{table.caption.10}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Cấu hình phần cứng}}{39}{table.caption.11}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Phần mềm và thư viện sử dụng}}{40}{table.caption.12}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Hyperparameters huấn luyện}}{42}{table.caption.13}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Task Weights}}{43}{table.caption.14}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Thống kê Dataset}}{49}{table.caption.15}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Tiến trình huấn luyện}}{50}{table.caption.16}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces Kết quả đánh giá Object-Level trên tập Test}}{50}{table.caption.17}%
+\contentsline {table}{\numberline {4.8}{\ignorespaces Kết quả đánh giá Object-Level trên tập Validation}}{51}{table.caption.18}%
+\contentsline {table}{\numberline {4.9}{\ignorespaces Kết quả đánh giá theo chuẩn COCO (Standard TorchMetrics)}}{52}{table.caption.19}%
+\contentsline {table}{\numberline {4.10}{\ignorespaces So sánh kết quả với Paper gốc}}{53}{table.caption.20}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Đánh giá hoàn thành mục tiêu}}{58}{table.caption.22}%
+\contentsfinish 

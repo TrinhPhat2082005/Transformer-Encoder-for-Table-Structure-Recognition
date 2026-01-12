@@ -27,14 +27,14 @@ def build_global_vocab(file_paths, save_path="vocab.json"):
 
 
 # --- CẤU HÌNH ---
-IOA_THRESHOLD = 0.7 # Giữ nguyên như script test của bạn
+IOA_THRESHOLD = 0.7 
 
-# 1. Thứ tự 5 Heads của Model (KHÔNG ĐỔI)
+# 1. Thứ tự 5 Heads của Model 
 # Index: 0: Row, 1: Col, 2: Header, 3: Cell, 4: Extract
 MODEL_HEADS = ['same_row', 'same_col', 'same_header', 'same_cell', 'extract_cell']
 
 # 2. Map từ tên trong JSON -> Index của Model
-# JSON của bạn dùng: 'row', 'column', 'header'
+# JSON của : 'row', 'column', 'header'
 LABEL_TO_HEAD_IDX = {
     'row': 0,           # Map vào 'same_row'
     'column': 1,        # Map vào 'same_col'
@@ -47,7 +47,7 @@ class AdjacencyLabelGenerator:
 
     def compute_ioa_batch(self, boxes1, boxes2):
         """
-        Tính IOA: Giữ nguyên logic numpy của bạn.
+        Tính IOA: Giữ nguyên logic numpy.
         Input: Raw Coordinates [x1, y1, x2, y2]
         """
         boxes1 = np.array(boxes1)
@@ -89,7 +89,7 @@ class AdjacencyLabelGenerator:
         if len(structure_boxes) == 0:
             return adj_matrices
 
-        # --- LOGIC CỦA BẠN: DUYỆT QUA TỪNG LABEL ---
+        # --- DUYỆT QUA TỪNG LABEL ---
         for obj_box, obj_label, cell_ptrs in zip(structure_boxes, structure_labels, cell_pointers_list):
             
             # 1. Tìm các từ thuộc về object này (Row/Col/Header)
@@ -103,7 +103,7 @@ class AdjacencyLabelGenerator:
                 grid_x, grid_y = np.meshgrid(indices, indices)
                 adj_matrices[obj_label][grid_x, grid_y] = 1.0
 
-                # b. Liên kết Yếu (Spanning Cells - từ logic repo/script của bạn)
+                # b. Liên kết Yếu (Spanning Cells)
                 # Head 4: extract_cell
                 if cell_ptrs and len(cell_ptrs) > 0:
                     ioa_cell = self.compute_ioa_batch(word_boxes, cell_ptrs)
@@ -122,7 +122,7 @@ class AdjacencyLabelGenerator:
                             adj_matrices[4][gy, gx] = 1.0 # Symmetric
 
         # --- BỔ SUNG: TỰ ĐỘNG TÍNH CELL (Index 3) ---
-        # Vì script của bạn không có nhãn 'cell' riêng, ta lấy giao của Row và Col
+        # Vì script không có nhãn 'cell' riêng, ta lấy giao của Row và Col
         # adj[3] = adj[0] (Row) * adj[1] (Col)
         adj_matrices[3] = adj_matrices[0] * adj_matrices[1]
 
@@ -153,7 +153,7 @@ class ClusTabTrainDataset(Dataset):
         file_name = os.path.basename(word_path)
         
         # Giả định file GT tên giống hệt file Word
-        # Nếu tên file khác (VD: _words.json vs .json), bạn cần xử lý string ở đây
+        # Nếu tên file khác (VD: _words.json vs .json), cần xử lý string ở đây
         # Ví dụ: gt_name = file_name.replace('_words.json', '.json')
         gt_name = file_name.replace('_words.json', '.json') if '_words' in file_name else file_name
         gt_path = os.path.join(self.gt_json_dir, gt_name)

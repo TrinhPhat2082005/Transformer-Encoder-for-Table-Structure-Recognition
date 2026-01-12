@@ -1,0 +1,841 @@
+% ============================================================================
+% CHAPTER 4: IMPLEMENTATION AND TESTING
+% THỰC HIỆN VÀ KIỂM THỬ
+% ============================================================================
+\chapter{Thực Hiện và Kiểm Thử}
+\label{chap:implementation}
+
+Chương này trình bày chi tiết quá trình triển khai mô hình ClusTabNet, pipeline huấn luyện, các cơ chế đánh giá và kết quả thực nghiệm. Từ thiết kế lý thuyết ở chương trước, bài làm đã chuyển đổi thành code hoạt động thực tế, huấn luyện mô hình trên dữ liệu thực, và đánh giá hiệu quả một cách có hệ thống.
+
+% ============================================================================
+% 4.1 Môi trường và công cụ
+% ============================================================================
+\section{Môi Trường và Công Cụ Phát Triển}
+\label{sec:environment}
+
+\subsection{Phần cứng}
+
+Quá trình phát triển và thử nghiệm được thực hiện trên hai môi trường:
+
+\begin{table}[H]
+\centering
+\caption{Cấu hình phần cứng}
+\label{tab:hardware}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Thành phần} & \textbf{Development (Local)} & \textbf{Training (Kaggle)} \\
+\hline
+Laptop & ASUS TUF Gaming A15 & - \\
+\hline
+CPU & AMD Ryzen 7 4800H (8 cores) & Intel Xeon (4 cores) \\
+\hline
+GPU & NVIDIA GeForce GTX 1650 (4GB) & NVIDIA Tesla T4 ×2 (16GB ×2) \\
+\hline
+RAM & 16GB DDR4 & 32GB \\
+\hline
+Storage & SSD 512GB NVMe & Kaggle Datasets \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Lý do sử dụng Kaggle:}
+\begin{itemize}
+    \item GPU T4 miễn phí với cấu hình dual-GPU, cung cấp tổng VRAM 32GB.
+    \item Mỗi GPU T4 có 16GB VRAM, đủ cho batch size 16 với max\_len=512.
+    \item Dễ dàng truy cập các dataset công khai như PubTables-1M.
+    \item Persistent storage cho checkpoints và model weights.
+    \item Mỗi session tối đa 30 giờ, đủ cho training 10+ epochs.
+\end{itemize}
+
+\subsection{Phần mềm và thư viện}
+
+\begin{table}[H]
+\centering
+\caption{Phần mềm và thư viện sử dụng}
+\label{tab:software}
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Công cụ/Thư viện} & \textbf{Phiên bản} & \textbf{Mục đích} \\
+\hline
+Python & 3.8+ & Ngôn ngữ lập trình chính \\
+\hline
+PyTorch & 1.10+ & Framework Deep Learning, cung cấp tensor operations, automatic differentiation \\
+\hline
+NumPy & 1.21+ & Xử lý ma trận, tính toán hiệu quả trên CPU \\
+\hline
+OpenCV (cv2) & 4.5+ & Đọc và xử lý ảnh cho visualization \\
+\hline
+Matplotlib & 3.4+ & Vẽ đồ thị training curves, visualization \\
+\hline
+SciPy & 1.7+ & Connected components algorithm cho post-processing \\
+\hline
+tqdm & 4.62+ & Progress bar cho training loops \\
+\hline
+TorchMetrics & 0.9+ & Tính toán metrics chuẩn hóa (AP, AR COCO-style) \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Cấu trúc thư mục dự án}
+
+\begin{lstlisting}[language={}, caption={Cấu trúc thư mục dự án}]
+FINAL_DA_NP/
+|-- model.py            # Dinh nghia kien truc mo hinh
+|-- dataset.py          # Dataset class va data loading
+|-- train.py            # Training script
+|-- evaluate.py         # Object-level evaluation
+|-- evaluate_coco.py    # COCO-style metrics
+|-- visualize.py        # Visualization tools
+|-- build_vocab.py      # Vocabulary building script
+|-- vocab.json          # Pre-built vocabulary file
+|
+|-- model/              
+|   `-- model_weightloss_10epoch.pth  # Trained checkpoint
+|
+|-- dataset/
+|   `-- pubtables_mini_test/  # Test subset
+|       |-- data_ocr/         # OCR JSON files
+|       |-- images/           # Table images
+|       `-- ocr_gt/           # Ground truth annotations
+|
+\end{lstlisting}
+
+% ============================================================================
+% 4.2 Pipeline huấn luyện
+% ============================================================================
+\section{Pipeline Huấn Luyện}
+\label{sec:training_pipeline}
+
+\subsection{Tổng quan pipeline}
+
+Pipeline huấn luyện được thiết kế modular với các giai đoạn rõ ràng:
+
+\textbf{Giai đoạn 1 - Chuẩn bị dữ liệu:}
+\begin{enumerate}
+    \item Load training data JSONs (word files + ground truth).
+    \item Build vocabulary từ training set (hoặc load từ file có sẵn).
+    \item Khởi tạo Dataset và DataLoader với batch size và num\_workers.
+\end{enumerate}
+
+\textbf{Giai đoạn 2 - Khởi tạo mô hình:}
+\begin{enumerate}
+    \item Tạo ClusTabEmbedding với vocab\_size từ vocabulary.
+    \item Tạo ClusTabNetPipeline với embedding module.
+    \item Move model lên GPU nếu available.
+    \item Khởi tạo optimizer (Adam) và loss function.
+\end{enumerate}
+
+\textbf{Giai đoạn 3 - Training loop:}
+\begin{enumerate}
+    \item Iterate qua epochs.
+    \item Trong mỗi epoch, iterate qua batches.
+    \item Forward pass → Compute loss → Backward pass → Update weights.
+    \item Log metrics và save checkpoints định kỳ.
+\end{enumerate}
+
+\textbf{Giai đoạn 4 - Validation và Checkpoint:}
+\begin{enumerate}
+    \item Sau mỗi epoch, evaluate trên validation set.
+    \item Lưu model nếu validation metric cải thiện.
+    \item Early stopping nếu không cải thiện sau N epochs.
+\end{enumerate}
+
+\subsection{Cấu hình huấn luyện}
+
+Các hyperparameters được lựa chọn dựa trên thực nghiệm và reference từ paper gốc:
+
+\begin{table}[H]
+\centering
+\caption{Hyperparameters huấn luyện}
+\label{tab:hyperparams}
+\begin{tabular}{|l|c|p{5cm}|}
+\hline
+\textbf{Tham số} & \textbf{Giá trị} & \textbf{Giải thích} \\
+\hline
+Batch size & 2 (local) / 4(Kaggle) & Local dùng batch nhỏ do giới hạn VRAM 4GB \\
+\hline
+Learning rate & $1 \times 10^{-4}$ & Conservative rate, phù hợp với AdamW optimizer \\
+\hline
+Optimizer & AdamW & Adam với decoupled weight decay, tốt cho Transformers \\
+\hline
+Epochs & 10 & Đủ để converge trên mini dataset \\
+\hline
+Max sequence length & 512 & Giới hạn bởi memory, đủ cho hầu hết tables \\
+\hline
+Weight decay & $1 \times 10^{-5}$ & L2 regularization nhẹ để prevent overfitting \\
+\hline
+Gradient clipping & 1.0 & Prevent exploding gradients \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Lý do chọn các giá trị:}
+\begin{itemize}
+    \item \textbf{Batch size = 2 (local) / 4 (Kaggle):} Trên máy local với GPU 4GB VRAM, chỉ có thể chạy batch size 2. Trên Kaggle với T4 16GB, batch 4 với seq\_len 512 vừa đủ memory.
+    
+    \item \textbf{LR = 1e-4:} Learning rate phổ biến cho Transformer models. Quá cao (1e-3) gây unstable training; quá thấp (1e-5) gây convergence chậm.
+    
+    \item \textbf{10 Epochs:} Trên mini dataset, training converges sau 5-7 epochs. 10 epochs đảm bảo model đạt plateau.
+    
+    \item \textbf{Weight decay = 1e-5:} Giá trị nhỏ để regularization nhẹ, không ảnh hưởng quá nhiều đến khả năng học của model.
+\end{itemize}
+
+\subsubsection*{Weight Decay (L2 Regularization)}
+
+Weight decay là kỹ thuật regularization nhằm ngăn overfitting bằng cách phạt các weights có giá trị lớn. Công thức cập nhật weight khi sử dụng weight decay:
+
+\begin{equation}
+w_{new} = w_{old} - lr \times (\nabla \mathcal{L} + \lambda \times w_{old})
+\end{equation}
+
+Trong đó $\lambda$ là hệ số weight decay (trong triển khai này là $10^{-5}$). Ý nghĩa:
+\begin{itemize}
+    \item Mỗi bước update, weights bị ``kéo về 0'' một lượng nhỏ tỷ lệ với giá trị hiện tại.
+    \item Ngăn model học các weights cực lớn, giảm overfitting trên training data.
+    \item Giá trị $10^{-5}$ là regularization nhẹ, phù hợp với bài toán TSR.
+\end{itemize}
+
+\subsubsection*{Gradient Clipping}
+
+Gradient clipping là kỹ thuật giới hạn độ lớn của gradient để ngăn \textbf{exploding gradients} -- hiện tượng gradient trở nên cực lớn và làm hỏng quá trình training.
+
+\begin{lstlisting}[language=Python]
+torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+\end{lstlisting}
+
+\textbf{Cơ chế hoạt động:}
+\begin{enumerate}
+    \item Tính tổng norm của tất cả gradients: $\|g\| = \sqrt{\sum_i g_i^2}$
+    \item Nếu $\|g\| > \text{max\_norm}$: Scale down tất cả gradients theo tỷ lệ $\frac{\text{max\_norm}}{\|g\|}$
+    \item Nếu $\|g\| \leq \text{max\_norm}$: Giữ nguyên gradients
+\end{enumerate}
+
+Gradient clipping đặc biệt quan trọng trong Transformer vì cơ chế attention có thể tạo ra gradients rất lớn khi attention weights tập trung vào một vị trí.
+
+\subsection{Thiết kế Loss Function}
+
+Hàm loss được thiết kế để handle hai vấn đề chính: multi-task learning và class imbalance.
+
+\subsubsection*{Multi-task Loss với Task Weights}
+
+Tổng loss là weighted sum của loss từ 5 tasks:
+
+\begin{equation}
+\label{eq:total_loss}
+\mathcal{L}_{total} = \lambda_1\mathcal{L}_{row} + \lambda_2\mathcal{L}_{col} + \lambda_3\mathcal{L}_{cell} + \lambda_4\mathcal{L}_{header} + \lambda_5\mathcal{L}_{span}
+\end{equation}
+
+Các trọng số được đặt dựa trên độ khó của từng task:
+
+\begin{table}[H]
+\centering
+\caption{Task Weights}
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{Task} & \textbf{Weight} & \textbf{Lý do} \\
+\hline
+same\_col & 1.0 & Cột dễ học (x-coordinate dominant) \\
+\hline
+same\_row & 3.0 & Hàng khó hơn, dễ "dính dòng" \\
+\hline
+same\_cell & 5.0 & Rất thưa thớt, cần weight cao \\
+\hline
+same\_header & 2.0 & Trung bình, thường có visual cues \\
+\hline
+extract\_cell & 2.0 & Spanning cells khó nhưng ít samples \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection*{Handling Class Imbalance}
+
+Do phần lớn pairs là negative (không cùng nhóm), sử dụng weighted BCE:
+
+\begin{lstlisting}[caption={Weighted Loss Implementation}, label={lst:weighted_loss}]
+def weighted_bce_loss(pred, target, pos_weight=10.0):
+    """
+    pred: (batch, seq, seq) - predicted adjacency
+    target: (batch, seq, seq) - ground truth
+    pos_weight: weight for positive class 
+                (thuong = negative_count / positive_count)
+    """
+    # Create weight tensor
+    weights = torch.where(target == 1, pos_weight, 1.0)
+    
+    # Compute BCE with weights
+    bce = -(target * torch.log(pred + 1e-8) + 
+            (1 - target) * torch.log(1 - pred + 1e-8))
+    weighted_bce = bce * weights
+    
+    return weighted_bce.mean()
+\end{lstlisting}
+
+\textbf{Tại sao pos\_weight = 10?}
+\begin{itemize}
+    \item Trong một bảng 10x10 (100 tokens), với 10 tokens/row:
+    \item Số positive pairs cho same\_row: $10 \times 10^2 = 1000$ (10 rows × 10×10 trong mỗi row)
+    \item Số negative pairs: $100^2 - 1000 = 9000$
+    \item Tỷ lệ neg/pos $\approx$ 9:1, nên pos\_weight $\approx$ 10 là hợp lý.
+\end{itemize}
+
+\subsubsection*{Mask để Ignore Padding}
+
+Rất quan trọng: Chỉ tính loss trên vùng dữ liệu thật, ignore padding:
+
+\begin{lstlisting}[caption={Masking Padding trong Loss}]
+# mask: (batch, seq) - 1 for real, 0 for padding
+mask_2d = mask.unsqueeze(1) & mask.unsqueeze(2)  # (batch, seq, seq)
+
+# Only compute loss on valid positions
+valid_pred = pred[mask_2d]
+valid_target = target[mask_2d]
+
+if len(valid_pred) > 0:
+    loss = bce_loss(valid_pred, valid_target)
+else:
+    loss = 0.0
+\end{lstlisting}
+
+\subsection{Quá trình huấn luyện}
+
+Training loop được hiện thực như sau:
+
+\begin{lstlisting}[caption={Training Loop}, label={lst:training_loop}]
+for epoch in range(num_epochs):
+    model.train()
+    epoch_loss = 0.0
+    
+    for batch in tqdm(train_dataloader, desc=f"Epoch {epoch}"):
+        # 1. Move data to device
+        input_ids = batch['input_ids'].to(device)
+        bbox = batch['bbox'].to(device)
+        targets = batch['targets'].to(device)
+        mask = (input_ids != 0)  # Attention mask
+        
+        # 2. Zero gradients
+        optimizer.zero_grad()
+        
+        # 3. Forward pass
+        outputs = model(input_ids=input_ids, bbox=bbox, mask=mask)
+        
+        # 4. Compute loss
+        loss = compute_total_loss(outputs, targets, mask)
+        
+        # 5. Backward pass
+        loss.backward()
+        
+        # 6. Gradient clipping (optional)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
+        # 7. Update weights
+        optimizer.step()
+        
+        epoch_loss += loss.item()
+    
+    # Log epoch metrics
+    avg_loss = epoch_loss / len(train_dataloader)
+    print(f"Epoch {epoch}: Train Loss = {avg_loss:.4f}")
+    
+    # Validation (optional)
+    if val_dataloader:
+        val_metrics = evaluate(model, val_dataloader)
+        print(f"Val F1 = {val_metrics['f1']:.4f}")
+\end{lstlisting}
+
+\subsection{Chi tiết triển khai một số điểm quan trọng}
+
+\subsubsection*{Gradient Clipping}
+
+Gradient clipping giúp ngăn exploding gradients, đặc biệt quan trọng với Transformer:
+
+\begin{lstlisting}
+torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+\end{lstlisting}
+
+Nếu gradient norm vượt quá 1.0, tất cả gradients được scale down proportionally.
+
+\subsubsection*{Model Checkpointing}
+
+Lưu model tốt nhất dựa trên validation metric:
+
+\begin{lstlisting}
+if val_f1 > best_val_f1:
+    best_val_f1 = val_f1
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'best_val_f1': best_val_f1
+    }, 'best_model.pth')
+\end{lstlisting}
+
+% ============================================================================
+% 4.3 Cơ chế đánh giá
+% ============================================================================
+\section{Cơ Chế Đánh Giá}
+\label{sec:evaluation}
+
+Đánh giá mô hình TSR phức tạp hơn các bài toán classification thông thường vì output là ma trận quan hệ và cần đánh giá ở nhiều mức độ khác nhau.
+
+\subsection{Metrics đánh giá}
+
+\subsubsection*{Pixel-Level Metrics}
+
+Đánh giá trực tiếp trên từng phần tử của ma trận kề:
+
+\begin{align}
+\text{Precision}_{pixel} &= \frac{TP}{TP + FP} \label{eq:precision}\\
+\text{Recall}_{pixel} &= \frac{TP}{TP + FN} \label{eq:recall}\\
+\text{F1}_{pixel} &= \frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}} \label{eq:f1}
+\end{align}
+
+Trong đó:
+\begin{itemize}
+    \item \textbf{TP (True Positive):} Mô hình dự đoán pair $(i,j)$ cùng nhóm, ground truth cũng cùng nhóm.
+    \item \textbf{FP (False Positive):} Mô hình dự đoán cùng nhóm, thực tế không cùng nhóm.
+    \item \textbf{FN (False Negative):} Mô hình dự đoán không cùng nhóm, thực tế cùng nhóm.
+    \item \textbf{TN (True Negative):} Cả hai đều negative.
+\end{itemize}
+
+\textbf{Hạn chế của Pixel-Level:}
+\begin{itemize}
+    \item Không phản ánh được "object-level" accuracy.
+    \item Một row bị tách đôi (2 clusters thay vì 1) có thể có pixel F1 cao nhưng structure sai.
+\end{itemize}
+
+\subsubsection*{Object-Level Metrics}
+
+Sau khi áp dụng Connected Components, so sánh predicted clusters với ground truth clusters:
+
+\begin{itemize}
+    \item Với mỗi predicted cluster, tìm ground truth cluster có IoU cao nhất.
+    \item Nếu IoU $>$ threshold (thường 0.5), coi là match.
+    \item Tính Precision, Recall, F1 dựa trên số matches.
+\end{itemize}
+
+Object-Level phản ánh đúng hơn chất lượng structure recognition:
+\begin{itemize}
+    \item Một row bị tách đôi = 2 predicted clusters, chỉ 1 match → Precision giảm.
+    \item Hai rows bị gộp = 1 predicted cluster, 1 ground truth không match → Recall giảm.
+\end{itemize}
+
+\subsubsection*{COCO-style AP/AR}
+
+Để so sánh công bằng với paper gốc, bài làm hiện thực COCO-style metrics:
+
+\begin{itemize}
+    \item \textbf{AP (Average Precision):} Trung bình precision ở các recall levels, tích hợp trên nhiều IoU thresholds (0.50 đến 0.95).
+    \item \textbf{AP50:} AP tại IoU threshold = 0.50 (lenient).
+    \item \textbf{AR (Average Recall):} Recall trung bình với nhiều detections per image.
+\end{itemize}
+
+\subsection{Quy trình đánh giá}
+
+\begin{algorithm}
+\caption{Quy trình đánh giá}
+\label{alg:evaluation}
+\begin{algorithmic}[1]
+\REQUIRE Model đã huấn luyện, Test dataset
+\ENSURE Các metrics đánh giá
+\STATE Đặt model ở chế độ evaluation: \texttt{model.eval()}
+\STATE Khởi tạo accumulators cho TP, FP, FN của mỗi task
+\FOR{each sample in test\_dataset}
+    \STATE $predictions \leftarrow$ model.forward(sample)
+    \STATE Áp dụng threshold $\tau = 0.5$: $pred\_binary = predictions > \tau$
+    \STATE Chạy Connected Components trên $pred\_binary$
+    \STATE Chạy Connected Components trên ground truth
+    \STATE Match predicted clusters với GT clusters bằng IoU
+    \STATE Cập nhật TP, FP, FN cho mỗi task
+\ENDFOR
+\STATE Tính Precision = TP / (TP + FP) cho mỗi task
+\STATE Tính Recall = TP / (TP + FN) cho mỗi task
+\STATE Tính F1 = 2 * P * R / (P + R)
+\RETURN metrics dict
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Connected Components Post-processing}
+
+Thuật toán Connected Components chuyển adjacency matrix thành clusters:
+
+\begin{lstlisting}[caption={Connected Components Processing}, label={lst:cc}]
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import connected_components
+
+def extract_clusters(adjacency_matrix, threshold=0.5):
+    """
+    Convert adjacency probability matrix to discrete clusters.
+    
+    Args:
+        adjacency_matrix: (N, N) float tensor with values [0, 1]
+        threshold: cutoff for binary conversion
+    
+    Returns:
+        labels: (N,) int array where labels[i] = cluster_id of token i
+        n_clusters: number of clusters found
+    """
+    # Step 1: Binarize
+    binary_adj = (adjacency_matrix > threshold).astype(int)
+    
+    # Step 2: Make symmetric (for undirected graph)
+    binary_adj = binary_adj | binary_adj.T
+    
+    # Step 3: Convert to sparse graph
+    graph = csr_matrix(binary_adj)
+    
+    # Step 4: Find connected components
+    n_clusters, labels = connected_components(
+        graph, 
+        directed=False, 
+        return_labels=True
+    )
+    
+    return labels, n_clusters
+\end{lstlisting}
+
+\textbf{Giải thích các bước:}
+\begin{itemize}
+    \item \textbf{Binarize:} Chuyển probability thành 0/1 dựa trên threshold.
+    \item \textbf{Symmetric:} Đảm bảo ma trận đối xứng (nếu (i,j) connected thì (j,i) cũng connected).
+    \item \textbf{Connected Components:} Thuật toán BFS/DFS tìm các nhóm vertices liên thông.
+\end{itemize}
+
+\textbf{Ví dụ:}
+\begin{itemize}
+    \item Ma trận input (3 tokens):
+    $\begin{bmatrix} 1 & 0.8 & 0.1 \\ 0.8 & 1 & 0.2 \\ 0.1 & 0.2 & 1 \end{bmatrix}$
+    
+    \item Sau binarize (threshold=0.5):
+    $\begin{bmatrix} 1 & 1 & 0 \\ 1 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+    
+    \item Kết quả: Token 0,1 thuộc cluster 0; Token 2 thuộc cluster 1.
+\end{itemize}
+
+% ============================================================================
+% 4.4 Kết quả thực nghiệm
+% ============================================================================
+\section{Kết Quả Thực Nghiệm}
+\label{sec:results}
+
+\subsection{Dataset sử dụng}
+
+Bài làm sử dụng một subset của PubTables-1M \cite{pubtables1m} cho thí nghiệm:
+
+\begin{table}[H]
+\centering
+\caption{Thống kê Dataset}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Split} & \textbf{Số samples} & \textbf{Avg tokens/table} & \textbf{Max tokens} \\
+\hline
+Train & 5,727 & 87 & 412 \\
+\hline
+Validation & 636 & 85 & 398 \\
+\hline
+Test & 637 & 89 & 421 \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Lý do sử dụng mini dataset:}
+\begin{itemize}
+    \item PubTables-1M đầy đủ có hơn 1 triệu tables, yêu cầu resources lớn.
+    \item Mini dataset đủ để kiểm chứng việc hiện thực và so sánh xu hướng (trends).
+    \item Training time $\approx$ 4 giờ trên Kaggle GPU.
+\end{itemize}
+
+\subsection{Kết quả huấn luyện}
+
+Quá trình huấn luyện diễn ra ổn định qua 10 epochs:
+
+\begin{table}[H]
+\centering
+\caption{Tiến trình huấn luyện}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Epoch} & \textbf{Train Loss} & \textbf{Thời gian (s)} \\
+\hline
+1 & 0.3073 & 193.4 \\
+\hline
+3 & 0.1617 & 492.7 \\
+\hline
+5 & 0.1265 & 792.1 \\
+\hline
+7 & 0.1010 & 1091.7 \\
+\hline
+10 & 0.0783 & 1540.7 \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Nhận xét:}
+\begin{itemize}
+    \item Loss giảm đều và ổn định qua các epochs, từ 0.3073 (epoch 1) xuống 0.0783 (epoch 10).
+    \item Không có dấu hiệu của sự mất ổn định (instability) hoặc bùng nổ gradient trong quá trình training.
+    \item Tốc độ training trung bình khoảng 150 giây/epoch trên GPU T4.
+    \item Loss giảm mạnh nhất ở giai đoạn đầu (epoch 1-3), sau đó giảm chậm lại khi model bắt đầu converge.
+\end{itemize}
+
+\subsection{Kết quả trên tập test - Object-Level}
+
+\begin{table}[H]
+\centering
+\caption{Kết quả đánh giá Object-Level trên tập Test}
+\label{tab:results}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Task} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} \\
+\hline
+Same Row & 0.3736 & 0.5750 & 0.4178 \\
+\hline
+Same Column & 0.6609 & 0.4835 & 0.5273 \\
+\hline
+Same Cell & 0.5870 & 0.7153 & 0.6303 \\
+\hline
+Header & 0.9057 & 0.9472 & 0.9243 \\
+\hline
+Spanning Cell & 0.7616 & 0.9758 & 0.8172 \\
+\hline
+\textbf{Average} & \textbf{0.6578} & \textbf{0.7394} & \textbf{0.6634} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Kết quả đánh giá Object-Level trên tập Validation}
+\label{tab:results_val_object}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Task} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} \\
+\hline
+Same Row & 0.3864 & 0.5743 & 0.4295 \\
+\hline
+Same Column & 0.6826 & 0.4980 & 0.5475 \\
+\hline
+Same Cell & 0.6064 & 0.7261 & 0.6471 \\
+\hline
+Header & 0.9117 & 0.9478 & 0.9275 \\
+\hline
+Spanning Cell & 0.7773 & 0.9787 & 0.8308 \\
+\hline
+\textbf{Average} & \textbf{0.6729} & \textbf{0.7450} & \textbf{0.6765} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Phân tích kết quả theo từng task}
+
+\subsubsection*{Header Recognition (F1 = 0.92)}
+
+\textbf{Kết quả xuất sắc.} Đây là task có performance cao nhất. Giải thích:
+
+\begin{itemize}
+    \item Header thường có visual/position cues rõ ràng: dòng đầu tiên, chữ in đậm (dù model không dùng visual features, text patterns vẫn khác biệt).
+    \item Từ vựng header thường khác biệt: "Name", "Date", "Total", "ID" vs dữ liệu số/text thường.
+    \item Ít ambiguity: Một bảng thường chỉ có 1-2 header rows, dễ phân biệt với body.
+\end{itemize}
+
+\subsubsection*{Spanning Cell Detection (F1 = 0.82)}
+
+\textbf{Kết quả tốt.} Đáng ngạc nhiên vì spanning cells được coi là thách thức lớn. Giải thích:
+
+\begin{itemize}
+    \item Spanning cells thường có bounding box rộng bất thường so với cells thông thường.
+    \item Nội dung thường là tiêu đề section hoặc merged categories, có patterns ngữ nghĩa đặc trưng.
+    \item Recall rất cao (0.98) cho thấy model detect được hầu hết spanning cells, dù precision thấp hơn (có false positives).
+\end{itemize}
+
+\subsubsection*{Same Cell (F1 = 0.63)}
+
+\textbf{Kết quả khá.} Cell recognition đạt mức chấp nhận được. Điểm mạnh:
+
+\begin{itemize}
+    \item Tokens trong cùng cell thường rất gần nhau về vị trí.
+    \item Ngữ nghĩa liên kết mạnh (một cell chứa thông tin cohesive).
+\end{itemize}
+
+Điểm yếu:
+\begin{itemize}
+    \item Cells với nhiều dòng text có thể bị tách thành nhiều cells.
+    \item Cells trống hoặc chỉ có 1 token khó để form pairwise relationship.
+\end{itemize}
+
+\subsubsection*{Same Column (F1 = 0.53)}
+
+\textbf{Kết quả trung bình.} Column recognition gặp khó khăn hơn row. Phân tích:
+
+\begin{itemize}
+    \item Precision cao (0.66) nhưng Recall thấp (0.48) → Model conservative, bỏ sót nhiều correct column assignments.
+    \item Columns có độ rộng khác nhau (số hẹp, text dài) gây khó align.
+    \item Text wrap trong cells làm tokens cùng column có x-coordinates khác nhau.
+\end{itemize}
+
+\subsubsection*{Same Row (F1 = 0.42)}
+
+\textbf{Kết quả thấp nhất.} Row recognition là thách thức lớn nhất. Nguyên nhân:
+
+\begin{itemize}
+    \item \textbf{Under-segmentation (gộp rows):} Hai dòng liền kề có khoảng cách y nhỏ dễ bị gộp thành 1 cluster.
+    \item \textbf{Over-segmentation (tách rows):} Dòng dài bị tách thành nhiều segments nếu có khoảng trống lớn.
+    \item Precision thấp (0.37) cho thấy nhiều false positives (gộp sai rows).
+    \item Đây là vấn đề phổ biến trong TSR và cần thêm techniques như learned thresholds hoặc post-processing.
+\end{itemize}
+
+\subsection{So sánh với paper gốc (COCO-style Metrics)}
+
+Để so sánh trực tiếp với paper gốc, bài làm đánh giá theo chuẩn COCO:
+
+\begin{table}[H]
+\centering
+\caption{Kết quả đánh giá theo chuẩn COCO (Standard TorchMetrics)}
+\label{tab:coco_results}
+\begin{tabular}{|l|c|c|p{4cm}|}
+\hline
+\textbf{Task} & \textbf{AP$_{50}$} & \textbf{AR} & \textbf{Nhận xét} \\
+\hline
+Same Row & 0.2307 & 0.5395 & Recall ổn, nhưng precision thấp do dính dòng \\
+\hline
+Same Column & 0.3486 & 0.3919 & Cần cải thiện cả Precision và Recall \\
+\hline
+Same Cell & 0.5088 & \textbf{0.7470} & Tốt, phát hiện đúng hầu hết ô \\
+\hline
+Header & \textbf{0.8800} & \textbf{0.9479} & \textbf{Rất cao}, gần như hoàn hảo \\
+\hline
+Spanning Cell & \textbf{0.7185} & \textbf{0.9852} & \textbf{Xuất sắc}, không bỏ sót ô gộp \\
+\hline
+\textbf{Trung bình} & \textbf{0.5373} & \textbf{0.7223} & \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{So sánh với Paper gốc:}
+
+Paper ClusTabNet gốc \cite{clustabnet2024} báo cáo kết quả trên tập PubTables-1M đầy đủ như sau:
+
+\begin{table}[H]
+\centering
+\caption{So sánh kết quả với Paper gốc}
+\label{tab:comparison}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Phương pháp} & \textbf{AP} & \textbf{AP$_{50}$} & \textbf{AR} \\
+\hline
+Paper gốc (PubTables-1M full, 100+ epochs) & 0.924 & 0.951 & 0.945 \\
+\hline
+Bài làm (Mini dataset, 10 epochs) & -- & 0.537 & 0.722 \\
+\hline
+\end{tabular}
+\end{table}
+
+Kết quả của bài làm thấp hơn đáng kể so với paper gốc (AP$_{50}$: 0.537 vs 0.951). Các nguyên nhân chính:
+
+\begin{itemize}
+    \item \textbf{Khác biệt về dữ liệu:} Training trên mini dataset (5,727 samples) so với full PubTables-1M (1M+ samples). Số lượng dữ liệu ít hơn khoảng 175 lần.
+    
+    \item \textbf{Số epochs huấn luyện:} Chỉ train 10 epochs, trong khi paper gốc sử dụng 100+ epochs. Model chưa đạt optimal convergence.
+    
+    \item \textbf{Hyperparameter tuning:} Không thực hiện extensive hyperparameter search do giới hạn tài nguyên tính toán.
+    
+    \item \textbf{Preprocessing khác biệt:} Paper gốc sử dụng thêm visual features từ CNN backbone, trong khi bài làm chỉ sử dụng text và bounding box features.
+\end{itemize}
+
+\textbf{Điểm tích cực:}
+
+Mặc dù kết quả tổng thể thấp hơn, \textbf{xu hướng giữa các tasks tương tự với paper gốc}: Header và Spanning Cell đạt kết quả cao nhất, Same Row là thách thức lớn nhất. Điều này chứng minh rằng việc hiện thực đúng hướng và có tiềm năng cải thiện khi có đủ dữ liệu và thời gian training.
+
+\subsection{Kết quả trực quan hóa}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/visualization_result.png}
+    \caption{Ví dụ kết quả trực quan hóa cấu trúc bảng. Mỗi màu sắc đại diện cho một loại cấu trúc: Đỏ - Rows, Xanh lá - Columns, Cam - Headers, Xanh dương - Cells.}
+    \label{fig:visualization}
+\end{figure}
+
+Visualization cho thấy:
+\begin{itemize}
+    \item Model nhận diện đúng phần lớn cấu trúc cơ bản.
+    \item Header (cam) được detect chính xác ở dòng đầu.
+    \item Một số rows bị gộp (2 rows physical thành 1 row predicted).
+    \item Columns generally aligned, với một vài misalignments ở edges.
+\end{itemize}
+
+% ============================================================================
+% 4.5 Phân tích và thảo luận
+% ============================================================================
+\section{Phân Tích và Thảo Luận}
+\label{sec:discussion}
+
+\subsection{Điểm mạnh của mô hình}
+
+Dựa trên kết quả thực nghiệm, mô hình ClusTabNet triển khai có các điểm mạnh sau:
+
+\begin{enumerate}
+    \item \textbf{Nhận diện semantic regions xuất sắc:} Header và Spanning Cell đạt F1 > 0.80, chứng minh khả năng học các patterns ngữ nghĩa và structural đặc thù.
+    
+    \item \textbf{Kiến trúc nhẹ và nhanh:} Với ~20M parameters và 3 Transformer layers, model có thể inference trong < 100ms mỗi bảng trên GPU.
+    
+    \item \textbf{End-to-end trainable:} Không cần pipeline phức tạp với multiple stages như detect → segment → recognize.
+    
+    \item \textbf{Xử lý spanning cells tự nhiên:} Không bị ràng buộc bởi grid assumption, model có thể handle ô gộp một cách tự nhiên thông qua learned relationships.
+\end{enumerate}
+
+\subsection{Điểm yếu và hạn chế}
+
+\begin{enumerate}
+    \item \textbf{Row recognition kém:} F1 $\approx$ 0.42 là điểm yếu chính. Nguyên nhân:
+    \begin{itemize}
+        \item Rows thường dày đặc với ít visual separation.
+        \item Threshold 0.5 có thể không optimal cho row task.
+        \item Class imbalance vẫn chưa được xử lý hoàn toàn.
+    \end{itemize}
+    
+    \item \textbf{Phụ thuộc OCR quality:} Model giả định OCR chính xác. OCR errors (missing tokens, wrong bboxes) propagate thành structure errors.
+    
+    \item \textbf{Không dùng visual features:} Trong khi nhiều tables có đường kẻ visible mà model không exploit.
+    
+    \item \textbf{$O(n^2)$ complexity:} Với bảng rất lớn (> 500 tokens), bộ nhớ và tính toán trở nên quá lớn (prohibitive). Không có cơ chế để xử lý các chuỗi cực dài.
+\end{enumerate}
+
+\subsection{Các thách thức gặp phải trong quá trình triển khai}
+
+\begin{itemize}
+    \item \textbf{Class Imbalance nghiêm trọng:} Số lượng negative samples áp đảo positive samples (tỷ lệ 9:1 hoặc hơn). Mặc dù đã dùng weighted loss, vấn đề vẫn chưa giải quyết hoàn toàn.
+    
+    \item \textbf{Long Sequences và Memory:} Bảng lớn có thể có hàng trăm tokens. Với Self-Attention $O(n^2)$, một batch với n=512 chiếm $\approx$ 8GB VRAM.
+    
+    \item \textbf{Vocabulary size lớn:} Domain table chứa nhiều số, ký hiệu, từ viết tắt. Vocabulary có thể > 100K tokens, chiếm phần lớn model parameters.
+    
+    \item \textbf{Đánh giá phức tạp:} Cần hiện thực nhiều metrics (pixel-level, object-level, COCO) để có cái nhìn toàn diện về performance.
+\end{itemize}
+
+\subsection{Giải pháp đã áp dụng}
+
+\begin{itemize}
+    \item \textbf{Weighted loss với task-specific weights:} Tăng weight cho tasks khó như Row và Cell.
+    
+    \item \textbf{Padding và truncation:} Sequences dài hơn max\_len được truncate, ngắn hơn được pad.
+    
+    \item \textbf{Attention masking:} Đảm bảo model không attend đến padding tokens.
+    
+    \item \textbf{Gradient clipping:} Ngăn exploding gradients trong training.
+    
+    \item \textbf{Model checkpointing:} Lưu best model dựa trên validation metric.
+\end{itemize}
+
+\subsection{Lessons Learned}
+
+Qua quá trình triển khai, một số bài học quan trọng:
+
+\begin{enumerate}
+    \item \textbf{Data quality matters:} Dữ liệu sạch và annotations chính xác quan trọng hơn model phức tạp.
+    
+    \item \textbf{Start simple:} Bắt đầu với cấu hình đơn giản (3 layers, d=640) trước khi scale up.
+    
+    \item \textbf{Visualize early and often:} Visualization giúp debug model behavior hiệu quả hơn numbers.
+    
+    \item \textbf{Multi-task learning có trade-offs:} Một số tasks có thể conflict (row vs column optimization).
+    
+    \item \textbf{Evaluation metrics cần match use case:} Object-level metrics phản ánh real-world performance tốt hơn pixel-level.
+\end{enumerate}

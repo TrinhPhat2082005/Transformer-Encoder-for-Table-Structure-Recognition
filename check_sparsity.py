@@ -32,8 +32,8 @@ def calculate_sparsity():
         input_ids = batch['input_ids']
         valid_mask = (input_ids != 0) # (B, Seq)
         
-        # We only care about valid interactions (real words vs real words)
-        # Construct 2D mask
+        # Chúng ta chỉ quan tâm đến các tương tác hợp lệ (từ thật vs từ thật)
+        # Tạo mask 2D
         mask_2d = valid_mask.unsqueeze(1) & valid_mask.unsqueeze(2) # (B, Seq, Seq)
         
         for idx, task in enumerate(tasks):

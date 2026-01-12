@@ -1,0 +1,189 @@
+% ============================================================================
+% APPENDIX - PHỤ LỤC
+% ============================================================================
+\chapter{Phụ Lục}
+\label{chap:appendix}
+
+% ============================================================================
+% A. Mã nguồn chính
+% ============================================================================
+\section{Mã Nguồn Các Module Chính}
+\label{sec:source_code}
+
+\subsection{ClusTabEmbedding Module}
+
+\begin{lstlisting}[caption={ClusTabEmbedding - model.py}, label={lst:embedding_full}]
+class ClusTabEmbedding(nn.Module):
+    def __init__(self, 
+                 vocab_size,
+                 d_model=256,
+                 d_text=180,
+                 d_pos=76,
+                 use_cnn=False,
+                 cnn_input_dim=2048
+                 ):
+        super().__init__()
+        
+        self.d_model = d_model
+        self.d_text = d_text
+        self.d_pos = d_pos
+        self.use_cnn = use_cnn
+        
+        # Text embedding
+        self.text_embed = nn.Embedding(vocab_size, d_text, padding_idx=0)
+        
+        # Position embedding for bbox
+        self.pos_embed = nn.Linear(4, d_pos)
+        
+        # Combine text + position
+        self.combine_proj = nn.Linear(d_text + d_pos, d_model)
+        
+        # Layer normalization
+        self.layer_norm = nn.LayerNorm(d_model)
+        
+    def forward(self, input_ids, bbox, cnn_features=None):
+        # Text embedding
+        text_emb = self.text_embed(input_ids)
+        
+        # Position embedding
+        pos_emb = self.pos_embed(bbox)
+        
+        # Combine
+        combined = torch.cat([text_emb, pos_emb], dim=-1)
+        output = self.combine_proj(combined)
+        output = self.layer_norm(output)
+        
+        return output
+\end{lstlisting}
+
+\subsection{Clustering Head}
+
+\begin{lstlisting}[caption={ClusteringLinearHead - model.py}, label={lst:clustering_head}]
+class ClusteringLinearHead(nn.Module):
+    def __init__(self, d_model):
+        super().__init__()
+        self.linear = nn.Linear(d_model, d_model)
+        self.d_k = d_model // 2
+        self.scale = 1.0 / math.sqrt(self.d_k)
+    
+    def forward(self, x):
+        # x: (Batch, Seq, d_model)
+        h = self.linear(x)
+        
+        # Compute pairwise similarity
+        # h_i @ h_j.T / sqrt(d_k)
+        scores = torch.matmul(h, h.transpose(-1, -2)) * self.scale
+        
+        # Apply sigmoid for probability
+        probs = torch.sigmoid(scores)
+        
+        return probs
+\end{lstlisting}
+
+% ============================================================================
+% B. Cấu trúc thư mục dự án
+% ============================================================================
+\section{Cấu Trúc Thư Mục Dự Án}
+\label{sec:project_structure}
+
+\begin{lstlisting}[language={}, caption={Project Structure}]
+FINAL_DA_NP/
+|-- model/
+|   `-- model_weitghloss_10epoch.pth
+|-- dataset/
+|   `-- pubtables_mini_test/
+|       |-- data_ocr/
+|       |-- images/
+|       `-- ocr_gt/
+|-- report/           # Folder bao cao LaTeX
+|   |-- main.tex
+|   |-- references.bib
+|   |-- sections/
+|   |   |-- cover.tex
+|   |   |-- abstract.tex
+|   |   |-- chapter1_introduction.tex
+|   |   |-- chapter2_background.tex
+|   |   |-- chapter3_design.tex
+|   |   |-- chapter4_implementation.tex
+|   |   |-- chapter5_conclusion.tex
+|   |   `-- appendix.tex
+|   `-- figures/
+|-- model.py
+|-- dataset.py
+|-- train.py
+|-- visualize.py
+|-- build_vocab.py
+|-- vocab.json
+`-- requirements.txt
+\end{lstlisting}
+
+% ============================================================================
+% C. Danh sách từ viết tắt
+% ============================================================================
+\section{Danh Sách Từ Viết Tắt}
+\label{sec:acronyms}
+
+\begin{table}[H]
+\centering
+\caption{Danh sách từ viết tắt}
+\label{tab:acronyms}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Viết tắt} & \textbf{Ý nghĩa} \\
+\hline
+TSR & Table Structure Recognition \\
+\hline
+OCR & Optical Character Recognition \\
+\hline
+NLP & Natural Language Processing \\
+\hline
+CNN & Convolutional Neural Network \\
+\hline
+RNN & Recurrent Neural Network \\
+\hline
+LSTM & Long Short-Term Memory \\
+\hline
+FFN & Feed-Forward Network \\
+\hline
+BCE & Binary Cross-Entropy \\
+\hline
+TEDS & Tree-Edit-Distance-based Similarity \\
+\hline
+IoU & Intersection over Union \\
+\hline
+\end{tabular}
+\end{table}
+
+% ============================================================================
+% D. Hướng dẫn chạy
+% ============================================================================
+\section{Hướng Dẫn Cài Đặt và Chạy}
+\label{sec:instructions}
+
+\subsection{Cài đặt môi trường}
+
+\begin{lstlisting}[language=bash, caption={Installation commands}]
+# Clone project
+git clone <repository_url>
+cd FINAL_DA_NP
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+\end{lstlisting}
+
+\subsection{Chạy visualization}
+
+\begin{lstlisting}[language=bash, caption={Run visualization}]
+python visualize.py
+\end{lstlisting}
+
+\subsection{Huấn luyện mô hình}
+
+\begin{lstlisting}[language=bash, caption={Training}]
+python train.py --epochs 10 --batch_size 16 --lr 1e-4
+\end{lstlisting}
